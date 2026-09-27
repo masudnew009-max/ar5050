@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import BecomeSeller from './pages/BecomeSeller';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import SellerDashboard from './pages/seller/SellerDashboard';
 import ComingSoon from './pages/ComingSoon';
 
 function AppRoutes() {
@@ -67,13 +68,13 @@ function AppRoutes() {
         }
       />
 
-      {/* Seller only (Phase 7-9 build out real analytics/upload/reel UI) */}
+      {/* Seller only (Phase 8-9 will add Product Upload / Reel Management tabs) */}
       <Route
         path="/seller"
         element={
           isSeller || isAdmin ? (
             <Layout>
-              <ComingSoon title="Seller Dashboard" phaseNote="Sales analytics & product upload arrive in Phase 7." />
+              <SellerDashboard />
             </Layout>
           ) : user ? (
             <Navigate to="/become-seller" replace />
