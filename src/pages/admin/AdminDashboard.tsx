@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Percent, MapPin } from 'lucide-react';
+import { Percent, MapPin, PackageCheck } from 'lucide-react';
 import CommissionSettings from './CommissionSettings';
 import DeliveryZones from './DeliveryZones';
+import ProductApproval from './ProductApproval';
 
-type Tab = 'commission' | 'delivery';
+type Tab = 'approval' | 'commission' | 'delivery';
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState<Tab>('commission');
+  const [tab, setTab] = useState<Tab>('approval');
 
   const tabs: { id: Tab; label: string; icon: typeof Percent }[] = [
+    { id: 'approval', label: 'Product Approval', icon: PackageCheck },
     { id: 'commission', label: 'Commission', icon: Percent },
     { id: 'delivery', label: 'Delivery Zones', icon: MapPin },
   ];
@@ -34,6 +36,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
+      {tab === 'approval' && <ProductApproval />}
       {tab === 'commission' && <CommissionSettings />}
       {tab === 'delivery' && <DeliveryZones />}
     </div>
