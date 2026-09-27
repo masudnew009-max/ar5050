@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { BarChart3, Package } from 'lucide-react';
+import { BarChart3, Package, Film } from 'lucide-react';
 import SellerAnalytics from './SellerAnalytics';
 import ProductUpload from './ProductUpload';
+import ReelManagement from './ReelManagement';
 
-type Tab = 'analytics' | 'products';
+type Tab = 'analytics' | 'products' | 'reels';
 
 export default function SellerDashboard() {
   const [tab, setTab] = useState<Tab>('analytics');
@@ -11,6 +12,7 @@ export default function SellerDashboard() {
   const tabs: { id: Tab; label: string; icon: typeof BarChart3 }[] = [
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'products', label: 'My Products', icon: Package },
+    { id: 'reels', label: 'Reels', icon: Film },
   ];
 
   return (
@@ -36,6 +38,7 @@ export default function SellerDashboard() {
 
       {tab === 'analytics' && <SellerAnalytics />}
       {tab === 'products' && <ProductUpload />}
+      {tab === 'reels' && <ReelManagement />}
     </div>
   );
 }
