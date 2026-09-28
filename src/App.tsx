@@ -3,7 +3,14 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import BecomeSeller from './pages/BecomeSeller';
-import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminHome from './pages/admin/AdminHome';
+import AdminSellers from './pages/admin/AdminSellers';
+import AdminProducts from './pages/admin/AdminProducts';
+import AdminOrders from './pages/admin/AdminOrders';
+import ProductApproval from './pages/admin/ProductApproval';
+import CommissionSettings from './pages/admin/CommissionSettings';
+import DeliveryZones from './pages/admin/DeliveryZones';
 import SellerDashboard from './pages/seller/SellerDashboard';
 import Shop from './pages/shop/Shop';
 import ProductDetail from './pages/shop/ProductDetail';
@@ -59,19 +66,28 @@ function AppRoutes() {
         }
       />
 
-      {/* Admin only */}
+      {/* Admin only — sidebar layout with nested pages */}
       <Route
         path="/admin"
         element={
           isAdmin ? (
             <Layout>
-              <AdminDashboard />
+              <AdminLayout />
             </Layout>
           ) : (
             <Navigate to="/" replace />
           )
         }
-      />
+      >
+        <Route index element={<AdminHome />} />
+        <Route path="sellers" element={<AdminSellers />} />
+        <Route path="products" element={<AdminProducts />} />
+        <Route path="approval" element={<ProductApproval />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="commission" element={<CommissionSettings />} />
+        <Route path="delivery" element={<DeliveryZones />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Route>
 
       {/* Seller only */}
       <Route

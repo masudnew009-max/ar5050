@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
 
@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
+  /** true until the session AND the matching profile row have both been loaded */
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -21,6 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Which user's profile we currently hold — lets us refresh silently
+  // (no full-screen spinner) on token refresh / tab refocus events.
+  const loadedProfileFor = useRef<string | null>(null);
+
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
@@ -35,6 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data as Profile | null;
   };
 
+  const loadProfile = async (userId: string, showSpinner: boolean) => {
+    if (showSpinner) setLoading(true);
+    const profileData = await fetchProfile(userId);
+    loadedProfileFor.current = userId;
+    setProfile(profileData);
+    setLoading(false);
+  };
+
   const refreshProfile = async () => {
     if (user) {
       const profileData = await fetchProfile(user.id);
@@ -43,30 +56,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Initial load: `loading` stays true until the profile has arrived, so
+    // role-protected routes (e.g. /admin) never redirect on a still-empty profile.
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
+        loadProfile(session.user.id, false);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // The initial session is already handled by getSession() above.
+      if (event === 'INITIAL_SESSION') return;
+
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        (async () => {
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
-        })();
+        const uid = session.user.id;
+        const alreadyLoaded = loadedProfileFor.current === uid;
+        // Deferred: calling supabase inside this callback synchronously can deadlock.
+        setTimeout(() => {
+          loadProfile(uid, !alreadyLoaded);
+        }, 0);
       } else {
+        loadedProfileFor.current = null;
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -87,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    loadedProfileFor.current = null;
     setUser(null);
     setProfile(null);
     setSession(null);
