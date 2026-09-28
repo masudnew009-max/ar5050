@@ -13,7 +13,7 @@ Stack: React + Vite + Tailwind CSS + Supabase
 - Role model changed from `admin | sr | customer` to `admin | seller | customer`.
 
 ## Progress
-Phases 0–10 done (Phase 10: shoppable Reels feed `/reels`, Shop `/shop`, Product page `/product/:id`). Next: Phase 11 — Dynamic Checkout.
+Phases 0–11 done (Phase 11: checkout `/checkout/:productId`, `place_order` RPC, orders `/orders`). Run migration 009 in Supabase. Next: Phase 12 — Email notification.
 
 ## Getting started
 

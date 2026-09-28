@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Sparkles,
   Film,
+  ClipboardList,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import Footer from './Footer';
@@ -37,13 +38,15 @@ export default function Layout({ children, fullBleed = false }: LayoutProps) {
   const navItems = [
     { label: 'Shop', path: '/shop', icon: ShoppingBag, show: true },
     { label: 'Reels', path: '/reels', icon: Film, show: true },
+    { label: 'My Orders', path: '/orders', icon: ClipboardList, show: isLoggedIn },
     { label: 'Become a Seller', path: '/become-seller', icon: Sparkles, show: isLoggedIn && isCustomer },
     { label: 'Seller Dashboard', path: '/seller', icon: LayoutDashboard, show: isSeller || isAdmin },
     { label: 'Admin Panel', path: '/admin', icon: Store, show: isAdmin },
   ].filter((item) => item.show);
 
   const isActive = (path: string) =>
-    location.pathname === path || (path === '/shop' && location.pathname.startsWith('/product/'));
+    location.pathname === path || (path === '/shop' && location.pathname.startsWith('/product/')) ||
+    (path === '/orders' && location.pathname.startsWith('/orders/'));
 
   return (
     <div className="min-h-screen bg-dark-900">

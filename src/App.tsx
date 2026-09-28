@@ -5,10 +5,12 @@ import Home from './pages/Home';
 import BecomeSeller from './pages/BecomeSeller';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import SellerDashboard from './pages/seller/SellerDashboard';
-import ComingSoon from './pages/ComingSoon';
 import Shop from './pages/shop/Shop';
 import ProductDetail from './pages/shop/ProductDetail';
 import ReelsFeed from './pages/shop/ReelsFeed';
+import Checkout from './pages/shop/Checkout';
+import OrderDetail from './pages/shop/OrderDetail';
+import MyOrders from './pages/shop/MyOrders';
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
@@ -38,15 +40,10 @@ function AppRoutes() {
       <Route path="/product/:id" element={<Layout><ProductDetail /></Layout>} />
       <Route path="/reels" element={<Layout fullBleed><ReelsFeed /></Layout>} />
 
-      {/* Checkout — built in Phase 11 (Buy Now buttons already link here) */}
-      <Route
-        path="/checkout/:productId"
-        element={
-          <Layout>
-            <ComingSoon title="Checkout" phaseNote="Checkout arrives in Phase 11." />
-          </Layout>
-        }
-      />
+      {/* Checkout & orders (Phase 11) — Buy Now buttons link here */}
+      <Route path="/checkout/:productId" element={<Layout><Checkout /></Layout>} />
+      <Route path="/orders" element={user ? <Layout><MyOrders /></Layout> : <Navigate to="/" replace />} />
+      <Route path="/orders/:id" element={user ? <Layout><OrderDetail /></Layout> : <Navigate to="/" replace />} />
 
       {/* Customer -> Seller registration */}
       <Route
