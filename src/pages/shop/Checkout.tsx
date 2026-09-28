@@ -122,6 +122,11 @@ export default function Checkout() {
       setError(rpcError.message);
       return;
     }
+
+    // Fire-and-forget: email the seller(s). A failure here must never block or
+    // undo the order, so errors are ignored (the function de-duplicates itself).
+    void supabase.functions.invoke('notify-seller', { body: { order_id: data as string } }).catch(() => {});
+
     navigate(`/orders/${data as string}`, { replace: true });
   };
 
