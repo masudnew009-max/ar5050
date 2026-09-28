@@ -12,6 +12,9 @@ Stack: React + Vite + Tailwind CSS + Supabase
   multi-vendor feature set phase by phase.
 - Role model changed from `admin | sr | customer` to `admin | seller | customer`.
 
+## Progress
+Phases 0–10 done (Phase 10: shoppable Reels feed `/reels`, Shop `/shop`, Product page `/product/:id`). Next: Phase 11 — Dynamic Checkout.
+
 ## Getting started
 
 ```bash

@@ -85,6 +85,8 @@ export type Reel = {
   updated_at: string;
 };
 
+export type ReelWithProduct = Reel & { product: Product | null };
+
 export type PaymentMethod = 'cod' | 'online';
 export type PaymentStatus = 'unpaid' | 'pending_verification' | 'paid';
 export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';

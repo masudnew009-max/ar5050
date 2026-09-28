@@ -6,6 +6,9 @@ import BecomeSeller from './pages/BecomeSeller';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import SellerDashboard from './pages/seller/SellerDashboard';
 import ComingSoon from './pages/ComingSoon';
+import Shop from './pages/shop/Shop';
+import ProductDetail from './pages/shop/ProductDetail';
+import ReelsFeed from './pages/shop/ReelsFeed';
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
@@ -30,12 +33,17 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<Layout><Home /></Layout>} />
 
-      {/* Shop browsing (Phase 10-11 build out the real product/reel feed) */}
+      {/* Shop browsing (Phase 10) */}
+      <Route path="/shop" element={<Layout><Shop /></Layout>} />
+      <Route path="/product/:id" element={<Layout><ProductDetail /></Layout>} />
+      <Route path="/reels" element={<Layout fullBleed><ReelsFeed /></Layout>} />
+
+      {/* Checkout — built in Phase 11 (Buy Now buttons already link here) */}
       <Route
-        path="/shop"
+        path="/checkout/:productId"
         element={
           <Layout>
-            <ComingSoon title="Shop" phaseNote="Shoppable reels & checkout arrive in Phase 10-11." />
+            <ComingSoon title="Checkout" phaseNote="Checkout arrives in Phase 11." />
           </Layout>
         }
       />
@@ -54,7 +62,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Admin only (Phase 6 will add the Product Approval tab) */}
+      {/* Admin only */}
       <Route
         path="/admin"
         element={
@@ -68,7 +76,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Seller only (Phase 8-9 will add Product Upload / Reel Management tabs) */}
+      {/* Seller only */}
       <Route
         path="/seller"
         element={

@@ -11,6 +11,7 @@ import {
   User,
   LayoutDashboard,
   Sparkles,
+  Film,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import Footer from './Footer';
@@ -18,9 +19,11 @@ import InstallButton from './InstallButton';
 
 interface LayoutProps {
   children: ReactNode;
+  /** Edge-to-edge content with no padding/footer (used by the Reels feed). */
+  fullBleed?: boolean;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, fullBleed = false }: LayoutProps) {
   const { user, profile, signOut } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,12 +36,14 @@ export default function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { label: 'Shop', path: '/shop', icon: ShoppingBag, show: true },
+    { label: 'Reels', path: '/reels', icon: Film, show: true },
     { label: 'Become a Seller', path: '/become-seller', icon: Sparkles, show: isLoggedIn && isCustomer },
     { label: 'Seller Dashboard', path: '/seller', icon: LayoutDashboard, show: isSeller || isAdmin },
     { label: 'Admin Panel', path: '/admin', icon: Store, show: isAdmin },
   ].filter((item) => item.show);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    location.pathname === path || (path === '/shop' && location.pathname.startsWith('/product/'));
 
   return (
     <div className="min-h-screen bg-dark-900">
@@ -171,8 +176,14 @@ export default function Layout({ children }: LayoutProps) {
       )}
 
       <main className="lg:ml-64 pt-[60px]">
-        <div className="p-4 lg:p-8">{children}</div>
-        <Footer />
+        {fullBleed ? (
+          children
+        ) : (
+          <>
+            <div className="p-4 lg:p-8">{children}</div>
+            <Footer />
+          </>
+        )}
       </main>
 
       <InstallButton />

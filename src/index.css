@@ -140,3 +140,7 @@ button:focus {
 .status-processing { color: #3b82f6; background-color: rgba(59, 130, 246, 0.1); }
 .status-completed { color: #22c55e; background-color: rgba(34, 197, 94, 0.1); }
 .status-cancelled { color: #ef4444; background-color: rgba(239, 68, 68, 0.1); }
+
+/* Hide scrollbar (category chips, reel feed) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
