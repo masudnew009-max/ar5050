@@ -37,7 +37,7 @@ export default function InstallButton() {
   if (!visible || dismissed) return null;
 
   return (
-    <div className="fixed bottom-5 left-5 z-40 sm:bottom-6 sm:left-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-20 left-4 z-40 md:bottom-6 md:left-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-lg shadow-primary-600/40 transition-all pr-2 pl-4 py-2.5">
         <Download className="w-5 h-5 flex-shrink-0" />
         <button onClick={handleInstall} className="font-medium text-sm whitespace-nowrap">

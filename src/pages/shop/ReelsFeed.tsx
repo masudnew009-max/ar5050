@@ -164,7 +164,7 @@ export default function ReelsFeed() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100dvh-60px)] flex items-center justify-center bg-black">
+      <div className="h-[calc(100dvh-var(--header-h)-var(--bottom-nav-h))] flex items-center justify-center bg-black">
         <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
       </div>
     );
@@ -172,7 +172,7 @@ export default function ReelsFeed() {
 
   if (error || reels.length === 0) {
     return (
-      <div className="h-[calc(100dvh-60px)] flex flex-col items-center justify-center bg-dark-900 text-center px-6">
+      <div className="h-[calc(100dvh-var(--header-h)-var(--bottom-nav-h))] flex flex-col items-center justify-center bg-dark-900 text-center px-6">
         <Film className="w-12 h-12 text-dark-500 mb-3" />
         <p className="text-dark-400 mb-4">{error ?? 'No reels yet — check back soon.'}</p>
         <Link to="/shop" className="text-primary-400 hover:text-primary-300">
@@ -183,7 +183,7 @@ export default function ReelsFeed() {
   }
 
   return (
-    <div className="relative h-[calc(100dvh-60px)] bg-black">
+    <div className="relative h-[calc(100dvh-var(--header-h)-var(--bottom-nav-h))] bg-black">
       <div
         ref={containerRef}
         className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"

@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Layout sizing (header is 64px; the bottom tab bar only exists on mobile) */
+:root {
+  --header-h: 64px;
+  --bottom-nav-h: 0px;
+}
+@media (max-width: 767px) {
+  :root {
+    --bottom-nav-h: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* Base Styles */
 body {
   background-color: #0f172a;

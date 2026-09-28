@@ -13,7 +13,7 @@ Stack: React + Vite + Tailwind CSS + Supabase
 - Role model changed from `admin | sr | customer` to `admin | seller | customer`.
 
 ## Progress
-Phases 0–12 done (Phase 12: seller email via Edge Function `notify-seller`, migration 010). Setup steps: see the header of `supabase/functions/notify-seller/index.ts`. Next: Phase 13 — Courier API.
+Phases 0–12 done, plus a full header/footer/home redesign. Brand name lives in `src/lib/brand.ts`. Demo data for testing: run `supabase/seed/demo_data.sql` once in the Supabase SQL Editor. Next: Phase 13 — Courier API.
 
 ## Getting started
 

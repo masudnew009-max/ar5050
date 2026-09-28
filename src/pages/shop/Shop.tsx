@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Loader2, Film, Play, PackageSearch } from 'lucide-react';
-import { supabase, Product, ReelWithProduct } from '../../lib/supabase';
+import { useSearchParams } from 'react-router-dom';
+import { Search, Loader2, PackageSearch } from 'lucide-react';
+import { supabase, Product } from '../../lib/supabase';
+import ReelsStrip from '../../components/ReelsStrip';
 import { PRODUCT_CATEGORIES } from '../../lib/categories';
 import ProductCard from './ProductCard';
 
@@ -22,7 +23,6 @@ export default function Shop() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [reels, setReels] = useState<ReelWithProduct[]>([]);
   const requestId = useRef(0);
 
   const updateParams = (next: { category?: string; q?: string }) => {
@@ -91,62 +91,16 @@ export default function Shop() {
     setLoadingMore(false);
   };
 
-  // Reels teaser strip
-  useEffect(() => {
-    supabase
-      .from('reels')
-      .select('*, product:products(*)')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(12)
-      .then(({ data }) => setReels(((data as ReelWithProduct[]) ?? []).filter((r) => r.product)));
-  }, []);
-
   const categories = ['All', ...PRODUCT_CATEGORIES];
 
   return (
-    <div className="text-white max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Shop</h1>
+    <div className="text-white">
+      <div className="mb-6">
+        <h1 className="text-2xl lg:text-3xl font-bold">Shop</h1>
+        <p className="text-sm text-dark-400 mt-1">Browse approved products from all sellers.</p>
+      </div>
 
-      {/* Reels strip */}
-      {reels.length > 0 && (
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <Film className="w-4 h-4 text-primary-400" /> Shop from reels
-            </h2>
-            <Link to="/reels" className="text-sm text-primary-400 hover:text-primary-300">
-              Watch all
-            </Link>
-          </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {reels.map((r) => (
-              <Link
-                key={r.id}
-                to={`/reels?start=${r.id}`}
-                className="relative shrink-0 w-28 aspect-[9/16] rounded-xl overflow-hidden bg-dark-700 border border-dark-700"
-              >
-                {r.thumbnail_url ? (
-                  <img src={r.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                ) : (
-                  <video
-                    src={`${r.video_url}#t=0.1`}
-                    preload="metadata"
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover pointer-events-none"
-                  />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                <Play className="absolute top-2 right-2 w-4 h-4 text-white/90 fill-white/90" />
-                <p className="absolute bottom-1.5 left-2 right-2 text-[11px] text-white line-clamp-2">
-                  {r.product?.name}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      <div className="mb-8"><ReelsStrip limit={12} /></div>
 
       {/* Search + sort */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
