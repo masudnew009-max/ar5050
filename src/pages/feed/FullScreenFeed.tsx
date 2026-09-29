@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Film, Loader2, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Film, Loader2, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { supabase, Product, ReelWithProduct } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { AuthModal } from '../../components/AuthModal';
@@ -23,7 +23,7 @@ interface FullScreenFeedProps {
 export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFeedProps) {
   const isHome = variant === 'home';
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [reels, setReels] = useState<ReelWithProduct[]>([]);
   const [plainProducts, setPlainProducts] = useState<Product[]>([]);
@@ -38,6 +38,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [showAuth, setShowAuth] = useState(false);
+  const [authTitle, setAuthTitle] = useState('Sign in to like reels');
   const pendingLikes = useRef<Set<string>>(new Set());
 
   const items = useMemo(() => buildFeed(reels, plainProducts), [reels, plainProducts]);
@@ -114,6 +115,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
   // ---- Like / unlike (optimistic, reverts if the request fails) ----
   const toggleLike = async (reelId: string) => {
     if (!user) {
+      setAuthTitle('Sign in to like reels');
       setShowAuth(true);
       return;
     }
@@ -179,6 +181,18 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Phase 16: "Become a Seller" lives here (top-left of the home feed), not in the site header.
+  // Shown to guests and customers; sellers and admins already have their dashboard.
+  const showSellerPill = isHome && profile?.role !== 'seller' && profile?.role !== 'admin';
+  const onSellerClick = () => {
+    if (!user) {
+      setAuthTitle('Sign in to open your shop');
+      setShowAuth(true);
+    } else {
+      navigate('/become-seller');
+    }
+  };
+
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/'));
 
   return (
@@ -195,7 +209,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
         style={{ paddingTop: isHome ? '0.75rem' : 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
       >
         <div
-          className={`flex w-full max-w-md items-center px-3 ${isHome ? 'justify-end' : 'justify-between'}`}
+          className="flex w-full max-w-md items-center px-3"
         >
           {!isHome && (
             <button
@@ -206,10 +220,18 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
+          {showSellerPill && (
+            <button
+              onClick={onSellerClick}
+              className="pointer-events-auto flex h-10 items-center gap-1.5 rounded-full bg-black/40 px-3.5 text-sm font-medium text-white backdrop-blur"
+            >
+              <Sparkles className="h-4 w-4 text-primary-400" /> Become a Seller
+            </button>
+          )}
           {items.length > 0 && (
             <button
               onClick={() => setMuted((m) => !m)}
-              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur"
+              className="pointer-events-auto ml-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur"
               aria-label={muted ? 'Unmute' : 'Mute'}
             >
               {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -255,7 +277,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
           ))}
         </div>
       )}
-      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} title="Sign in to like reels" />
+      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} title={authTitle} />
     </div>
   );
 }
