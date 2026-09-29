@@ -22,6 +22,8 @@ interface CartContextValue {
   addItem: (product: Product, qty?: number) => void;
   setQty: (productId: string, qty: number) => void;
   removeItem: (productId: string) => void;
+  /** Refresh price/stock/name/image snapshots from live product data. Quantities are never changed here. */
+  refreshItems: (fresh: Record<string, Pick<Product, 'seller_id' | 'name' | 'price' | 'unit' | 'image_url' | 'stock'>>) => void;
   clear: () => void;
 }
 
@@ -93,6 +95,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.filter((i) => i.productId !== productId));
   }, []);
 
+  const refreshItems = useCallback<CartContextValue['refreshItems']>((fresh) => {
+    setItems((prev) => {
+      let changed = false;
+      const next = prev.map((i) => {
+        const f = fresh[i.productId];
+        if (!f) return i;
+        const u: CartItem = {
+          ...i,
+          sellerId: f.seller_id,
+          name: f.name,
+          price: f.price,
+          unit: f.unit || 'pcs',
+          imageUrl: f.image_url,
+          stock: f.stock,
+        };
+        if (JSON.stringify(u) !== JSON.stringify(i)) changed = true;
+        return u;
+      });
+      return changed ? next : prev;
+    });
+  }, []);
+
   const clear = useCallback(() => setItems([]), []);
 
   const value = useMemo<CartContextValue>(
@@ -103,9 +127,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       addItem,
       setQty,
       removeItem,
+      refreshItems,
       clear,
     }),
-    [items, addItem, setQty, removeItem, clear]
+    [items, addItem, setQty, removeItem, refreshItems, clear]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
