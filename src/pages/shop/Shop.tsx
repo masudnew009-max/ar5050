@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, Loader2, PackageSearch } from 'lucide-react';
 import { supabase, Product } from '../../lib/supabase';
 import ReelsStrip from '../../components/ReelsStrip';
-import { PRODUCT_CATEGORIES } from '../../lib/categories';
+import CategoryGrid from './CategoryGrid';
 import ProductCard from './ProductCard';
 
 const PAGE_SIZE = 24;
@@ -91,13 +91,15 @@ export default function Shop() {
     setLoadingMore(false);
   };
 
-  const categories = ['All', ...PRODUCT_CATEGORIES];
-
   return (
     <div className="text-white">
       <div className="mb-6">
         <h1 className="text-2xl lg:text-3xl font-bold">Shop</h1>
         <p className="text-sm text-dark-400 mt-1">Browse approved products from all sellers.</p>
+      </div>
+
+      <div className="mb-6">
+        <CategoryGrid selected={category} onSelect={(c) => updateParams({ category: c })} />
       </div>
 
       <div className="mb-8"><ReelsStrip limit={12} /></div>
@@ -122,23 +124,6 @@ export default function Shop() {
           <option value="price_asc">Price: Low to High</option>
           <option value="price_desc">Price: High to Low</option>
         </select>
-      </div>
-
-      {/* Category chips */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-4">
-        {categories.map((c) => (
-          <button
-            key={c}
-            onClick={() => updateParams({ category: c })}
-            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              category === c
-                ? 'bg-primary-600 text-white'
-                : 'bg-dark-800 border border-dark-700 text-dark-300 hover:text-white'
-            }`}
-          >
-            {c}
-          </button>
-        ))}
       </div>
 
       {error && (
