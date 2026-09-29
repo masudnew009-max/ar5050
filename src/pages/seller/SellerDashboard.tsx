@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { BarChart3, Package, Film } from 'lucide-react';
+import { BarChart3, Package, Film, Wallet } from 'lucide-react';
 import SellerAnalytics from './SellerAnalytics';
 import ProductUpload from './ProductUpload';
 import ReelManagement from './ReelManagement';
+import SellerPayouts from './SellerPayouts';
 import { useAuth } from '../../hooks/useAuth';
 
-type Tab = 'analytics' | 'products' | 'reels';
+type Tab = 'analytics' | 'products' | 'reels' | 'payouts';
 
 export default function SellerDashboard() {
   const { profile } = useAuth();
@@ -15,6 +16,7 @@ export default function SellerDashboard() {
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'products', label: 'My Products', icon: Package },
     { id: 'reels', label: 'Reels', icon: Film },
+    { id: 'payouts', label: 'Payouts', icon: Wallet },
   ];
 
   return (
@@ -48,6 +50,7 @@ export default function SellerDashboard() {
       {tab === 'analytics' && <SellerAnalytics />}
       {tab === 'products' && <ProductUpload />}
       {tab === 'reels' && <ReelManagement />}
+      {tab === 'payouts' && <SellerPayouts />}
     </div>
   );
 }

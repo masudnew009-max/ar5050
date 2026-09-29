@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
           Phone: ${esc(order.customer_phone)}<br>
           ${esc(order.delivery_address)}<br>
           ${esc(order.thana)}, ${esc(order.zilla)}<br>
-          Payment: ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online'}
+          Payment: ${order.payment_method === 'cod' ? 'Cash on Delivery' : `Paid online (${esc(order.payment_provider ?? 'online')}) — being verified by us. Please wait for confirmation in your dashboard before shipping.`}
         </p>
         ${siteUrl ? `<p><a href="${esc(siteUrl)}/seller" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Open seller dashboard</a></p>` : ''}
       </div>`;

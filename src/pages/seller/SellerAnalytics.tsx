@@ -12,7 +12,7 @@ interface ItemRow {
   commission_amount: number;
   seller_net_amount: number;
   created_at: string;
-  orders: { status: OrderStatus; created_at: string } | null;
+  orders: { status: OrderStatus; created_at: string; payment_method: string; payment_status: string } | null;
 }
 
 interface Stats {
@@ -21,6 +21,16 @@ interface Stats {
   totalSales: number;
   totalCommission: number;
   netIncome: number;
+}
+
+/** What the seller should know about payment before shipping. */
+function paymentBadge(o: ItemRow['orders']): { text: string; cls: string } | null {
+  if (!o || o.status === 'cancelled') return null;
+  if (o.payment_method === 'cod') return { text: 'Cash on Delivery', cls: 'bg-blue-500/15 text-blue-300' };
+  if (o.payment_status === 'paid') return { text: 'Paid', cls: 'bg-green-500/15 text-green-300' };
+  if (o.payment_status === 'pending_verification')
+    return { text: 'Payment being verified — wait before shipping', cls: 'bg-yellow-500/15 text-yellow-300' };
+  return { text: 'Payment not received — don\'t ship yet', cls: 'bg-red-500/15 text-red-300' };
 }
 
 export default function SellerAnalytics() {
@@ -46,7 +56,7 @@ export default function SellerAnalytics() {
 
     const { data, error } = await supabase
       .from('order_items')
-      .select('id, order_id, product_id, quantity, subtotal, commission_amount, seller_net_amount, created_at, orders(status, created_at)')
+      .select('id, order_id, product_id, quantity, subtotal, commission_amount, seller_net_amount, created_at, orders(status, created_at, payment_method, payment_status)')
       .eq('seller_id', user!.id)
       .order('created_at', { ascending: false });
 
@@ -130,6 +140,10 @@ export default function SellerAnalytics() {
                     <p className="text-dark-500 text-xs">
                       {new Date(item.created_at).toLocaleDateString()} · {item.orders?.status ?? 'unknown'}
                     </p>
+                    {(() => {
+                      const b = paymentBadge(item.orders);
+                      return b ? <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${b.cls}`}>{b.text}</span> : null;
+                    })()}
                   </div>
                 </div>
                 <div className="text-right">

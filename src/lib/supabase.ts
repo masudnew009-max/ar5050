@@ -196,3 +196,23 @@ export async function getSellerKycSignedUrl(path: string, expiresInSeconds = 300
   if (error) throw error;
   return data.signedUrl;
 }
+
+/** One row of payout_summary() (Phase 17b). */
+export type PayoutSummary = {
+  seller_id: string;
+  shop_name: string;
+  payable: number;
+  pending: number;
+  paid_out: number;
+  balance: number;
+};
+
+export type SellerPayout = {
+  id: string;
+  seller_id: string;
+  amount: number;
+  method: string;
+  reference: string | null;
+  note: string | null;
+  paid_at: string;
+};

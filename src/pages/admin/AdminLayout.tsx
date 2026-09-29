@@ -20,6 +20,7 @@ function buildGroups(pendingProducts: number): NavGroup[] {
         { label: 'All Products', to: '/admin/products', icon: Package },
         { label: 'Pending Approval', to: '/admin/approval', icon: PackageCheck, badge: pendingProducts },
         { label: 'Orders', to: '/admin/orders', icon: ClipboardList },
+        { label: 'Seller Payouts', to: '/admin/payouts', icon: Wallet },
       ],
     },
     {
@@ -33,7 +34,6 @@ function buildGroups(pendingProducts: number): NavGroup[] {
     {
       title: 'Coming soon',
       items: [
-        { label: 'Seller Payouts', icon: Wallet },
         { label: 'Customers', icon: UserCircle },
         { label: 'Discounts', icon: Tag },
         { label: 'Analytics', icon: BarChart3 },
