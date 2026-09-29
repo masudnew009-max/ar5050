@@ -99,6 +99,20 @@ export type ReelWithProduct = Reel & { product: Product | null };
 
 export type PaymentMethod = 'cod' | 'online';
 export type PaymentStatus = 'unpaid' | 'pending_verification' | 'paid';
+
+/** A manual payment account configured by admin (Phase 17). */
+export type PaymentMethodConfig = {
+  id: string;
+  code: string;
+  name: string;
+  kind: 'mobile' | 'bank';
+  account_name: string | null;
+  account_number: string;
+  extra: string | null;
+  instructions: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
 export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
 
 export type Order = {
@@ -114,6 +128,10 @@ export type Order = {
   total_amount: number;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
+  payment_provider: string | null;
+  payment_trx_id: string | null;
+  payment_sender: string | null;
+  payment_note: string | null;
   status: OrderStatus;
   created_at: string;
   updated_at: string;

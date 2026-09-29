@@ -10,7 +10,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'What payment methods do you accept?',
-    a: 'Right now we accept Cash on Delivery only: you pay the delivery person when your order arrives. Online payment (bKash, Nagad, Rocket, bank and cards) is coming soon.',
+    a: 'You can pay by Cash on Delivery, or pay online by bKash, Nagad, Rocket or bank transfer when those options are shown at checkout. For online payment, send the total to the account shown, then enter your Transaction ID; we verify it and confirm your order. Card payment is coming soon.',
   },
   {
     q: 'How much is delivery?',

@@ -27,12 +27,13 @@ function buildGroups(pendingProducts: number): NavGroup[] {
       items: [
         { label: 'Commission', to: '/admin/commission', icon: Percent },
         { label: 'Delivery Zones', to: '/admin/delivery', icon: MapPin },
+        { label: 'Payment Methods', to: '/admin/payments', icon: Wallet },
       ],
     },
     {
       title: 'Coming soon',
       items: [
-        { label: 'Payment & Payouts', icon: Wallet },
+        { label: 'Seller Payouts', icon: Wallet },
         { label: 'Customers', icon: UserCircle },
         { label: 'Discounts', icon: Tag },
         { label: 'Analytics', icon: BarChart3 },

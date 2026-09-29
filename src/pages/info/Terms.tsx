@@ -33,8 +33,10 @@ export default function Terms() {
 
       <Section title="4. Payment">
         <p>
-          Currently orders are paid by Cash on Delivery. You pay the delivery person when the order arrives. Online
-          payment options will be added later and these terms will be updated.
+          Orders can be paid by Cash on Delivery, where you pay the delivery person when the order arrives, or online
+          through the mobile wallet and bank accounts shown at checkout. For online payment you send the exact total
+          and give us the Transaction ID; the order is confirmed after we verify the payment. A Transaction ID can be
+          used for one order only, and payments we cannot verify may be rejected. Card payment will be added later.
         </p>
       </Section>
 

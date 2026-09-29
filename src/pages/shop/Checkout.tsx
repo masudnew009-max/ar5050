@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, Package, Minus, Plus, LogIn, Truck, Banknote, ArrowLeft, ShoppingCart, AlertTriangle } from 'lucide-react';
-import { supabase, Product, DeliveryZone } from '../../lib/supabase';
+import { supabase, Product, DeliveryZone, PaymentMethodConfig } from '../../lib/supabase';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
 import { formatPrice } from '../../lib/format';
@@ -33,6 +33,11 @@ export default function Checkout() {
   const [thana, setThana] = useState('');
   const [address, setAddress] = useState('');
 
+  const [methods, setMethods] = useState<PaymentMethodConfig[]>([]);
+  const [payMethod, setPayMethod] = useState<string>('cod'); // 'cod' or a payment_methods.code
+  const [trxId, setTrxId] = useState('');
+  const [paidFrom, setPaidFrom] = useState('');
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAuth, setShowAuth] = useState(false);
@@ -49,13 +54,15 @@ export default function Checkout() {
         setLoading(false);
         return;
       }
-      const [productRes, zonesRes] = await Promise.all([
+      const [productRes, zonesRes, methodsRes] = await Promise.all([
         supabase.from('products').select('*').in('id', ids).eq('status', 'approved').eq('is_active', true),
         supabase.from('delivery_zones').select('zilla, thana, delivery_charge').order('zilla').order('thana'),
+        supabase.from('payment_methods').select('*').eq('is_active', true).order('sort_order'),
       ]);
       if (cancelled) return;
       const found = new Map(((productRes.data as Product[]) ?? []).map((p) => [p.id, p]));
       setZones((zonesRes.data as typeof zones) ?? []);
+      setMethods((methodsRes.data as PaymentMethodConfig[]) ?? []);
 
       if (cartMode) {
         const next: Line[] = [];
@@ -146,6 +153,12 @@ export default function Checkout() {
     if (!zilla || !thana) return setError('Please select your Zilla and Thana.');
     if (!address.trim()) return setError('Please enter your full delivery address.');
 
+    const chosen = methods.find((m) => m.code === payMethod) ?? null;
+    if (payMethod !== 'cod') {
+      if (!chosen) return setError('Please choose a payment method.');
+      if (trxId.trim().length < 6) return setError('Please enter the Transaction ID from your payment.');
+      if (!paidFrom.trim()) return setError('Please enter the number or account you paid from.');
+    }
     if (blocked) return setError('Some items are unavailable or exceed stock. Please review your cart.');
 
     setSubmitting(true);
@@ -155,8 +168,10 @@ export default function Checkout() {
       p_delivery_address: address.trim(),
       p_zilla: zilla,
       p_thana: thana,
-      p_payment_method: 'cod',
+      p_payment_method: payMethod,
       p_items: lines.map((l) => ({ product_id: l.id, quantity: l.qty })),
+      // Only sent for online payment, so Cash on Delivery keeps working even before migration 016 is run.
+      ...(payMethod === 'cod' ? {} : { p_payment_trx_id: trxId.trim(), p_payment_sender: paidFrom.trim() }),
     });
     setSubmitting(false);
 
@@ -275,14 +290,58 @@ export default function Checkout() {
             </div>
           </div>
 
-          <div className="bg-dark-800/60 border border-dark-700 rounded-2xl p-5">
-            <h2 className="font-semibold flex items-center gap-2 mb-3">
+          <div className="bg-dark-800/60 border border-dark-700 rounded-2xl p-5 space-y-3">
+            <h2 className="font-semibold flex items-center gap-2">
               <Banknote className="w-4 h-4 text-primary-400" /> Payment
             </h2>
-            <label className="flex items-center gap-3 p-3 rounded-xl border border-primary-600 bg-primary-600/10">
-              <input type="radio" checked readOnly />
+
+            <label
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer ${
+                payMethod === 'cod' ? 'border-primary-600 bg-primary-600/10' : 'border-dark-700'
+              }`}
+            >
+              <input type="radio" name="pay" checked={payMethod === 'cod'} onChange={() => setPayMethod('cod')} />
               <span className="text-sm">Cash on Delivery — pay when you receive your order</span>
             </label>
+
+            {methods.map((m) => (
+              <div key={m.code}>
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer ${
+                    payMethod === m.code ? 'border-primary-600 bg-primary-600/10' : 'border-dark-700'
+                  }`}
+                >
+                  <input type="radio" name="pay" checked={payMethod === m.code} onChange={() => setPayMethod(m.code)} />
+                  <span className="text-sm">{m.name} — pay now, we verify your Transaction ID</span>
+                </label>
+
+                {payMethod === m.code && (
+                  <div className="mt-3 p-4 rounded-xl bg-dark-900 border border-dark-700 space-y-3 text-sm">
+                    <p className="text-dark-300">
+                      Send <b className="text-primary-400">{formatPrice(total)}</b>
+                      {deliveryCharge === null && <span className="text-dark-500"> (+ delivery, select your area)</span>} to:
+                    </p>
+                    <div className="space-y-1">
+                      <p className="text-lg font-semibold tracking-wide select-all">{m.account_number}</p>
+                      {m.account_name && <p className="text-dark-300">Account name: {m.account_name}</p>}
+                      {m.extra && <p className="text-dark-300 whitespace-pre-line">{m.extra}</p>}
+                    </div>
+                    {m.instructions && <p className="text-dark-400">{m.instructions}</p>}
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-dark-400 mb-1">Paid from (number / account)</label>
+                        <input value={paidFrom} onChange={(e) => setPaidFrom(e.target.value)} className={inputClass} placeholder="01XXXXXXXXX" />
+                      </div>
+                      <div>
+                        <label className="block text-dark-400 mb-1">Transaction ID</label>
+                        <input value={trxId} onChange={(e) => setTrxId(e.target.value)} className={inputClass} placeholder="e.g. 9A7B6C5D4E" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-dark-500">Your order is confirmed once we verify this payment.</p>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -364,7 +423,7 @@ export default function Checkout() {
               className="mt-5 w-full flex items-center justify-center gap-2 py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold shadow-lg shadow-primary-600/30"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {user ? 'Place Order' : 'Sign in to order'}
+              {!user ? 'Sign in to order' : payMethod === 'cod' ? 'Place Order' : 'Place Order & submit payment'}
             </button>
             <p className="text-xs text-dark-500 text-center mt-3">
               The final price and delivery charge are confirmed by the server when you place the order.

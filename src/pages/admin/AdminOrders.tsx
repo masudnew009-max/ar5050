@@ -99,13 +99,32 @@ export default function AdminOrders() {
     setActingId(null);
   };
 
+  const rejectPayment = async (order: Order) => {
+    const note = window.prompt('Why is this payment rejected? (the customer will see this)', 'Transaction ID not found');
+    if (note === null) return;
+    setActingId(order.id);
+    setError(null);
+    const { error } = await supabase
+      .from('orders')
+      .update({ payment_status: 'unpaid', payment_note: note.trim() || 'Payment could not be verified' })
+      .eq('id', order.id);
+    if (error) setError(error.message);
+    else
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id ? { ...o, payment_status: 'unpaid', payment_note: note.trim() || 'Payment could not be verified' } : o
+        )
+      );
+    setActingId(null);
+  };
+
   const changePayment = async (order: Order, next: PaymentStatus) => {
     if (next === order.payment_status) return;
     setActingId(order.id);
     setError(null);
-    const { error } = await supabase.from('orders').update({ payment_status: next }).eq('id', order.id);
+    const { error } = await supabase.from('orders').update({ payment_status: next, ...(next === 'paid' ? { payment_note: null } : {}) }).eq('id', order.id);
     if (error) setError(error.message);
-    else setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, payment_status: next } : o)));
+    else setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, payment_status: next, ...(next === 'paid' ? { payment_note: null } : {}) } : o)));
     setActingId(null);
   };
 
@@ -210,6 +229,40 @@ export default function AdminOrders() {
                     <p className="text-xs text-dark-400 mt-1 uppercase">{o.payment_method}</p>
                   </div>
                 </div>
+
+                {o.payment_method === 'online' && (
+                  <div className="mt-3 p-3 rounded-lg bg-dark-900 border border-dark-700 text-xs text-dark-300 space-y-1">
+                    <p>
+                      <span className="text-dark-500">Method:</span>{' '}
+                      <span className="uppercase">{o.payment_provider ?? 'online'}</span> ·{' '}
+                      <span className="text-dark-500">Amount to match:</span> {formatPrice(Number(o.total_amount))}
+                    </p>
+                    <p>
+                      <span className="text-dark-500">TrxID:</span>{' '}
+                      <span className="select-all font-medium text-white">{o.payment_trx_id ?? '—'}</span> ·{' '}
+                      <span className="text-dark-500">From:</span> {o.payment_sender ?? '—'}
+                    </p>
+                    {o.payment_note && <p className="text-amber-300">Rejected: {o.payment_note}</p>}
+                    {o.payment_status === 'pending_verification' && (
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          disabled={actingId === o.id}
+                          onClick={() => changePayment(o, 'paid')}
+                          className="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium disabled:opacity-50"
+                        >
+                          Verify &amp; mark paid
+                        </button>
+                        <button
+                          disabled={actingId === o.id}
+                          onClick={() => rejectPayment(o)}
+                          className="px-3 py-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-300 text-xs font-medium disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <label className="block">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Loader2, CheckCircle2, Package, MapPin, ArrowLeft } from 'lucide-react';
+import { Loader2, CheckCircle2, Package, MapPin, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Order, OrderItem } from '../../lib/supabase';
 import { formatPrice } from '../../lib/format';
@@ -9,16 +9,27 @@ type ItemWithProduct = OrderItem & { product: { name: string; image_url: string 
 type OrderWithItems = Omit<Order, 'items'> & { items: ItemWithProduct[] };
 
 const orderShortId = (id: string) => id.slice(0, 8).toUpperCase();
+const providerLabel = (code: string | null) => (code ? code.charAt(0).toUpperCase() + code.slice(1) : 'Online');
+
+const PAY_STATUS_TEXT: Record<string, string> = {
+  unpaid: 'Unpaid',
+  pending_verification: 'Payment being verified',
+  paid: 'Paid',
+};
 
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<OrderWithItems | null>(null);
   const [loading, setLoading] = useState(true);
+  const [trx, setTrx] = useState('');
+  const [sender, setSender] = useState('');
+  const [payBusy, setPayBusy] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
   const justPlaced = order ? Date.now() - new Date(order.created_at).getTime() < 2 * 60 * 1000 : false;
 
-  useEffect(() => {
-    if (!id) return;
-    supabase
+  const load = () => {
+    if (!id) return Promise.resolve();
+    return supabase
       .from('orders')
       .select('*, items:order_items(*, product:products(name, image_url))')
       .eq('id', id)
@@ -27,7 +38,32 @@ export default function OrderDetail() {
         setOrder(data as OrderWithItems | null);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const resubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!order) return;
+    setPayError(null);
+    setPayBusy(true);
+    const { error } = await supabase.rpc('submit_payment_proof', {
+      p_order_id: order.id,
+      p_trx_id: trx.trim(),
+      p_sender: sender.trim(),
+    });
+    setPayBusy(false);
+    if (error) {
+      setPayError(error.message);
+      return;
+    }
+    setTrx('');
+    setSender('');
+    await load();
+  };
 
   if (loading) {
     return (
@@ -98,9 +134,53 @@ export default function OrderDetail() {
             <span>Total</span><span className="text-primary-400">{formatPrice(order.total_amount)}</span>
           </div>
           <p className="text-xs text-dark-400">
-            Payment: {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online'} · {order.payment_status.replace('_', ' ')}
+            Payment:{' '}
+            {order.payment_method === 'cod'
+              ? `Cash on Delivery · ${PAY_STATUS_TEXT[order.payment_status] ?? order.payment_status}`
+              : `${providerLabel(order.payment_provider)} · ${PAY_STATUS_TEXT[order.payment_status] ?? order.payment_status}`}
           </p>
+          {order.payment_method === 'online' && order.payment_trx_id && (
+            <p className="text-xs text-dark-500">
+              Transaction ID: {order.payment_trx_id}
+              {order.payment_sender ? ` · from ${order.payment_sender}` : ''}
+            </p>
+          )}
         </div>
+
+        {order.payment_method === 'online' && order.payment_status === 'unpaid' && order.status !== 'cancelled' && (
+          <form onSubmit={resubmit} className="border-t border-dark-700 pt-4 space-y-3 text-sm">
+            <div className="flex gap-2 items-start bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl p-3">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <p>
+                We couldn&apos;t verify your payment.
+                {order.payment_note ? ` Reason: ${order.payment_note}.` : ''} Please send the correct details below,
+                or contact us.
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input
+                value={sender}
+                onChange={(e) => setSender(e.target.value)}
+                placeholder="Paid from (number / account)"
+                className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-primary-500"
+              />
+              <input
+                value={trx}
+                onChange={(e) => setTrx(e.target.value)}
+                placeholder="Transaction ID"
+                className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-primary-500"
+              />
+            </div>
+            {payError && <p className="text-red-400">{payError}</p>}
+            <button
+              type="submit"
+              disabled={payBusy}
+              className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-xl font-medium"
+            >
+              {payBusy ? 'Sending…' : 'Send payment details'}
+            </button>
+          </form>
+        )}
 
         <div className="border-t border-dark-700 pt-4 text-sm">
           <p className="flex items-center gap-2 font-medium mb-1"><MapPin className="w-4 h-4 text-primary-400" /> Delivery address</p>

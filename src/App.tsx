@@ -11,6 +11,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import ProductApproval from './pages/admin/ProductApproval';
 import CommissionSettings from './pages/admin/CommissionSettings';
 import DeliveryZones from './pages/admin/DeliveryZones';
+import PaymentSettings from './pages/admin/PaymentSettings';
 import SellerDashboard from './pages/seller/SellerDashboard';
 import Shop from './pages/shop/Shop';
 import ProductDetail from './pages/shop/ProductDetail';
@@ -103,6 +104,7 @@ function AppRoutes() {
         <Route path="orders" element={<AdminOrders />} />
         <Route path="commission" element={<CommissionSettings />} />
         <Route path="delivery" element={<DeliveryZones />} />
+        <Route path="payments" element={<PaymentSettings />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
 
