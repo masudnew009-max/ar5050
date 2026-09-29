@@ -74,6 +74,11 @@ CREATE TRIGGER trg_seller_kyc_guard
 -- ============================================================
 -- register_seller(): now requires NID details
 -- ============================================================
+-- The old 5-argument version (from migration 012) has no NID checks. CREATE OR
+-- REPLACE with a different argument list would only ADD an overload and leave
+-- the old one callable, letting anyone become a seller without KYC — so drop it.
+DROP FUNCTION IF EXISTS register_seller(text, text, text, text, text);
+
 CREATE OR REPLACE FUNCTION register_seller(
     p_shop_name text,
     p_shop_slug text,
