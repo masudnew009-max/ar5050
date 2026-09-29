@@ -8,12 +8,20 @@ import ReelSlide from '../../components/feed/ReelSlide';
 import ProductSlide from '../../components/feed/ProductSlide';
 import { buildFeed } from '../../components/feed/types';
 
+interface FullScreenFeedProps {
+  /**
+   * 'home'       — the homepage: sits between the site header and the bottom nav.
+   * 'standalone' — covers the whole screen with only a back + mute button.
+   */
+  variant?: 'home' | 'standalone';
+}
+
 /**
- * Phase 14ক — TikTok-style full-screen vertical feed (reels only).
- * Mounted on a standalone test route (/feed-test) with no site header,
- * bottom nav or footer. Not the homepage yet (that is 14ঘ).
+ * TikTok-style full-screen vertical feed of reels and product cards
+ * (Phase 14ক–14গ). Since 14ঘ it is the homepage (variant="home").
  */
-export default function FullScreenFeed() {
+export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFeedProps) {
+  const isHome = variant === 'home';
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -174,20 +182,30 @@ export default function FullScreenFeed() {
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/'));
 
   return (
-    <div className="fixed inset-0 bg-black">
-      {/* Floating controls — the only chrome on this screen */}
+    <div
+      className={
+        isHome
+          ? 'relative h-[calc(100dvh-var(--header-h)-var(--bottom-nav-h))] bg-black'
+          : 'fixed inset-0 bg-black'
+      }
+    >
+      {/* Floating controls */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center"
-        style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
+        style={{ paddingTop: isHome ? '0.75rem' : 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
       >
-        <div className="flex w-full max-w-md items-center justify-between px-3">
-          <button
-            onClick={goBack}
-            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
+        <div
+          className={`flex w-full max-w-md items-center px-3 ${isHome ? 'justify-end' : 'justify-between'}`}
+        >
+          {!isHome && (
+            <button
+              onClick={goBack}
+              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
           {items.length > 0 && (
             <button
               onClick={() => setMuted((m) => !m)}

@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
-import Home from './pages/Home';
 import BecomeSeller from './pages/BecomeSeller';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminHome from './pages/admin/AdminHome';
@@ -41,14 +40,14 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/" element={<Layout><Home /></Layout>} />
+      <Route path="/" element={<Layout fullBleed><FullScreenFeed variant="home" /></Layout>} />
 
       {/* Shop browsing (Phase 10) */}
       <Route path="/shop" element={<Layout><Shop /></Layout>} />
       <Route path="/product/:id" element={<Layout><ProductDetail /></Layout>} />
       <Route path="/reels" element={<Layout fullBleed><ReelsFeed /></Layout>} />
 
-      {/* Phase 14ক — full-screen TikTok-style feed, standalone test route (not the homepage yet) */}
+      {/* Phase 14 — full-screen TikTok-style feed (home = with header + bottom nav) */}
       <Route path="/feed-test" element={<FullScreenFeed />} />
 
       {/* Checkout & orders (Phase 11) — Buy Now buttons link here */}
