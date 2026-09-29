@@ -7,7 +7,7 @@ import { formatPrice } from '../../lib/format';
 
 type Fresh = Pick<Product, 'id' | 'seller_id' | 'name' | 'price' | 'unit' | 'image_url' | 'stock'>;
 
-/** Phase 15ঙ: edit quantities, remove items, warn about stock / availability. Checkout comes in 15চ. */
+/** Phase 15ঙ/15চ: edit quantities, remove items, warn about stock / availability, proceed to /checkout. */
 export default function Cart() {
   const { items, subtotal, setQty, removeItem, refreshItems, clear } = useCart();
   const [checked, setChecked] = useState(false);
@@ -159,6 +159,21 @@ export default function Cart() {
         <span className="text-primary-400">{formatPrice(subtotal)}</span>
       </div>
       <p className="text-xs text-dark-500 mt-1">Delivery charge is calculated at checkout.</p>
+      {hasProblem ? (
+        <button
+          disabled
+          className="mt-5 w-full py-3 bg-dark-700 text-dark-500 rounded-xl font-semibold cursor-not-allowed"
+        >
+          Fix the items above to continue
+        </button>
+      ) : (
+        <Link
+          to="/checkout"
+          className="mt-5 block w-full text-center py-3 bg-primary-600 hover:bg-primary-700 rounded-xl font-semibold shadow-lg shadow-primary-600/30"
+        >
+          Proceed to Checkout
+        </Link>
+      )}
     </div>
   );
 }

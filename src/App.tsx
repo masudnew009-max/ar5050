@@ -56,6 +56,7 @@ function AppRoutes() {
       <Route path="/cart" element={<Layout><Cart /></Layout>} />
 
       {/* Checkout & orders (Phase 11) — Buy Now buttons link here */}
+      <Route path="/checkout" element={<Layout><Checkout /></Layout>} />
       <Route path="/checkout/:productId" element={<Layout><Checkout /></Layout>} />
       <Route path="/orders" element={user ? <Layout><MyOrders /></Layout> : <Navigate to="/" replace />} />
       <Route path="/orders/:id" element={user ? <Layout><OrderDetail /></Layout> : <Navigate to="/" replace />} />

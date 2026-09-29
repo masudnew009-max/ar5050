@@ -1,24 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Loader2, Package, Minus, Plus, LogIn, Truck, Banknote, ArrowLeft } from 'lucide-react';
+import { Loader2, Package, Minus, Plus, LogIn, Truck, Banknote, ArrowLeft, ShoppingCart, AlertTriangle } from 'lucide-react';
 import { supabase, Product, DeliveryZone } from '../../lib/supabase';
+import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
 import { formatPrice } from '../../lib/format';
 import { AuthModal } from '../../components/AuthModal';
 
 const BD_PHONE = /^(?:\+?88)?01[3-9]\d{8}$/;
 
+/** One order line — either the single "Buy Now" product or one cart item. */
+type Line = { id: string; name: string; price: number; unit: string; imageUrl: string | null; stock: number; qty: number };
+
 export default function Checkout() {
   const { productId } = useParams<{ productId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { items: cartItems, clear: clearCart } = useCart();
 
-  const [product, setProduct] = useState<Product | null>(null);
+  // /checkout/:productId = "Buy Now" (one product). /checkout = the whole cart (Phase 15চ).
+  const cartMode = !productId;
+
+  const [lines, setLines] = useState<Line[]>([]);
+  const [missing, setMissing] = useState<string[]>([]);
   const [zones, setZones] = useState<Pick<DeliveryZone, 'zilla' | 'thana' | 'delivery_charge'>[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [qty, setQty] = useState(Math.max(1, Number(searchParams.get('qty')) || 1));
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [zilla, setZilla] = useState('');
@@ -29,31 +37,53 @@ export default function Checkout() {
   const [error, setError] = useState<string | null>(null);
   const [showAuth, setShowAuth] = useState(false);
 
+  const cartKey = cartItems.map((i) => `${i.productId}:${i.qty}`).sort().join(',');
+
   useEffect(() => {
-    if (!productId) return;
     let cancelled = false;
     (async () => {
+      const ids = cartMode ? cartItems.map((i) => i.productId) : productId ? [productId] : [];
+      if (ids.length === 0) {
+        setLines([]);
+        setMissing([]);
+        setLoading(false);
+        return;
+      }
       const [productRes, zonesRes] = await Promise.all([
-        supabase
-          .from('products')
-          .select('*')
-          .eq('id', productId)
-          .eq('status', 'approved')
-          .eq('is_active', true)
-          .maybeSingle(),
+        supabase.from('products').select('*').in('id', ids).eq('status', 'approved').eq('is_active', true),
         supabase.from('delivery_zones').select('zilla, thana, delivery_charge').order('zilla').order('thana'),
       ]);
       if (cancelled) return;
-      const p = productRes.data as Product | null;
-      setProduct(p);
+      const found = new Map(((productRes.data as Product[]) ?? []).map((p) => [p.id, p]));
       setZones((zonesRes.data as typeof zones) ?? []);
-      if (p) setQty((q) => Math.min(Math.max(1, q), Math.max(1, p.stock)));
+
+      if (cartMode) {
+        const next: Line[] = [];
+        const gone: string[] = [];
+        for (const ci of cartItems) {
+          const p = found.get(ci.productId);
+          if (!p) gone.push(ci.name);
+          else next.push({ id: p.id, name: p.name, price: p.price, unit: p.unit || 'pcs', imageUrl: p.image_url, stock: p.stock, qty: ci.qty });
+        }
+        setLines(next);
+        setMissing(gone);
+      } else {
+        const p = found.get(ids[0]);
+        const wanted = Math.max(1, Number(searchParams.get('qty')) || 1);
+        setLines(
+          p
+            ? [{ id: p.id, name: p.name, price: p.price, unit: p.unit || 'pcs', imageUrl: p.image_url, stock: p.stock, qty: Math.min(wanted, Math.max(1, p.stock)) }]
+            : []
+        );
+        setMissing([]);
+      }
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [productId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId, cartMode, cartKey]);
 
   // Prefill from the signed-in profile (only into empty fields)
   useEffect(() => {
@@ -76,22 +106,32 @@ export default function Checkout() {
     );
   }
 
-  if (!product || product.stock <= 0) {
+  if (lines.length === 0) {
     return (
       <div className="text-center py-24 text-white">
-        <Package className="w-12 h-12 mx-auto mb-3 text-dark-500" />
+        {cartMode ? <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-dark-500" /> : <Package className="w-12 h-12 mx-auto mb-3 text-dark-500" />}
         <p className="mb-4 text-dark-400">
-          {product ? 'This product is out of stock.' : "This product isn't available."}
+          {cartMode
+            ? missing.length > 0
+              ? 'The items in your cart are no longer available.'
+              : 'Your cart is empty.'
+            : "This product isn't available."}
         </p>
-        <Link to="/shop" className="text-primary-400 hover:text-primary-300">
-          Back to shop
+        <Link to={cartMode && missing.length > 0 ? '/cart' : '/shop'} className="text-primary-400 hover:text-primary-300">
+          {cartMode && missing.length > 0 ? 'Go to cart' : 'Back to shop'}
         </Link>
       </div>
     );
   }
 
-  const subtotal = product.price * qty;
+  const stockProblem = lines.some((l) => l.stock <= 0 || l.qty > l.stock);
+  const blocked = stockProblem || missing.length > 0;
+  const subtotal = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
   const total = subtotal + (deliveryCharge ?? 0);
+  const changeQty = (id: string, delta: number) =>
+    setLines((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, qty: Math.min(Math.max(1, l.stock), Math.max(1, l.qty + delta)) } : l))
+    );
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +146,8 @@ export default function Checkout() {
     if (!zilla || !thana) return setError('Please select your Zilla and Thana.');
     if (!address.trim()) return setError('Please enter your full delivery address.');
 
+    if (blocked) return setError('Some items are unavailable or exceed stock. Please review your cart.');
+
     setSubmitting(true);
     const { data, error: rpcError } = await supabase.rpc('place_order', {
       p_customer_name: name.trim(),
@@ -114,7 +156,7 @@ export default function Checkout() {
       p_zilla: zilla,
       p_thana: thana,
       p_payment_method: 'cod',
-      p_items: [{ product_id: product.id, quantity: qty }],
+      p_items: lines.map((l) => ({ product_id: l.id, quantity: l.qty })),
     });
     setSubmitting(false);
 
@@ -128,6 +170,7 @@ export default function Checkout() {
     void supabase.functions.invoke('notify-seller', { body: { order_id: data as string } }).catch(() => {});
 
     navigate(`/orders/${data as string}`, { replace: true });
+    if (cartMode) clearCart(); // the whole cart was ordered
   };
 
   const inputClass =
@@ -136,10 +179,10 @@ export default function Checkout() {
   return (
     <div className="text-white max-w-5xl mx-auto">
       <Link
-        to={`/product/${product.id}`}
+        to={cartMode ? '/cart' : `/product/${lines[0].id}`}
         className="inline-flex items-center gap-1 text-sm text-dark-400 hover:text-white mb-4"
       >
-        <ArrowLeft className="w-4 h-4" /> Back to product
+        <ArrowLeft className="w-4 h-4" /> {cartMode ? 'Back to cart' : 'Back to product'}
       </Link>
       <h1 className="text-2xl font-bold mb-6">Checkout</h1>
 
@@ -248,31 +291,50 @@ export default function Checkout() {
           <div className="bg-dark-800/60 border border-dark-700 rounded-2xl p-5 lg:sticky lg:top-24">
             <h2 className="font-semibold mb-4">Order summary</h2>
 
-            <div className="flex gap-3 mb-4">
-              <div className="w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-dark-700 flex items-center justify-center">
-                {product.image_url ? (
-                  <img src={product.image_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <Package className="w-6 h-6 text-dark-500" />
-                )}
+            {(missing.length > 0 || stockProblem) && (
+              <div className="flex gap-2 items-start bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs rounded-xl p-3 mb-4">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>
+                  {missing.length > 0 && <>No longer available: {missing.join(', ')}. </>}
+                  {stockProblem && <>Some quantities exceed current stock. </>}
+                  <Link to="/cart" className="underline">Fix in cart</Link>
+                </p>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium line-clamp-2">{product.name}</p>
-                <p className="text-sm text-dark-400">{formatPrice(product.price)} / {product.unit || 'pcs'}</p>
-              </div>
-            </div>
+            )}
 
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm text-dark-400">Quantity</span>
-              <div className="flex items-center bg-dark-900 border border-dark-700 rounded-xl">
-                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-2 text-dark-300 hover:text-white" aria-label="Decrease">
-                  <Minus className="w-4 h-4" />
-                </button>
-                <span className="w-9 text-center text-sm font-medium">{qty}</span>
-                <button type="button" onClick={() => setQty((q) => Math.min(product.stock, q + 1))} className="p-2 text-dark-300 hover:text-white" aria-label="Increase">
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="space-y-4 mb-4">
+              {lines.map((l) => (
+                <div key={l.id}>
+                  <div className="flex gap-3">
+                    <div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden bg-dark-700 flex items-center justify-center">
+                      {l.imageUrl ? (
+                        <img src={l.imageUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="w-6 h-6 text-dark-500" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium line-clamp-2">{l.name}</p>
+                      <p className="text-sm text-dark-400">{formatPrice(l.price)} / {l.unit}</p>
+                    </div>
+                    {cartMode && <p className="text-sm text-dark-300 self-center shrink-0">× {l.qty}</p>}
+                  </div>
+                  {!cartMode && (
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-sm text-dark-400">Quantity</span>
+                      <div className="flex items-center bg-dark-900 border border-dark-700 rounded-xl">
+                        <button type="button" onClick={() => changeQty(l.id, -1)} className="p-2 text-dark-300 hover:text-white" aria-label="Decrease">
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-9 text-center text-sm font-medium">{l.qty}</span>
+                        <button type="button" onClick={() => changeQty(l.id, 1)} className="p-2 text-dark-300 hover:text-white" aria-label="Increase">
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
             <div className="space-y-2 text-sm border-t border-dark-700 pt-4">
@@ -298,7 +360,7 @@ export default function Checkout() {
 
             <button
               type="submit"
-              disabled={submitting || zones.length === 0}
+              disabled={submitting || zones.length === 0 || blocked}
               className="mt-5 w-full flex items-center justify-center gap-2 py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold shadow-lg shadow-primary-600/30"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
