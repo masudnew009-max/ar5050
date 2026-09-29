@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, LogIn, LogOut, ChevronRight, LayoutGrid } from 'lucide-react';
+import { X, LogIn, LogOut, ChevronRight, ChevronDown, LayoutGrid } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { PRODUCT_CATEGORIES } from '../lib/categories';
 import { categoryIcon } from '../lib/category-icons';
 import { BRAND } from '../lib/brand';
+import { useSubcategories } from '../hooks/useSubcategories';
 import { isPathActive, useNavLinks } from './useNavLinks';
 
 interface MobileMenuProps {
@@ -22,8 +23,12 @@ export default function MobileMenu({ open, onClose, onLoginClick }: MobileMenuPr
   const { main, account, user, profile } = useNavLinks();
   const location = useLocation();
 
+  const subMap = useSubcategories();
+  const [expanded, setExpanded] = useState<string | null>(null);
+
   const activeCategory =
     location.pathname === '/shop' ? new URLSearchParams(location.search).get('category') : null;
+  const activeSub = location.pathname === '/shop' ? new URLSearchParams(location.search).get('sub') : null;
   const onAllCategories = location.pathname === '/shop' && !activeCategory;
 
   // close whenever the route changes
@@ -31,6 +36,11 @@ export default function MobileMenu({ open, onClose, onLoginClick }: MobileMenuPr
     if (open) onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (open) setExpanded(activeCategory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // lock page scroll + close on Escape while open
   useEffect(() => {
@@ -123,16 +133,54 @@ export default function MobileMenu({ open, onClose, onLoginClick }: MobileMenuPr
             </Link>
             {PRODUCT_CATEGORIES.filter((c) => c !== 'Other').map((c) => {
               const Icon = categoryIcon(c);
+              const subs = subMap[c] ?? [];
+              const url = `/shop?category=${encodeURIComponent(c)}`;
+
+              // No sub-categories: a plain link
+              if (subs.length === 0) {
+                return (
+                  <Link key={c} to={url} className={rowClass(activeCategory === c)}>
+                    <Icon className="h-5 w-5 shrink-0 text-primary-400" />
+                    <span className="flex-1">{c}</span>
+                    <ChevronRight className="h-4 w-4 text-dark-500" />
+                  </Link>
+                );
+              }
+
+              const isOpen = expanded === c;
               return (
-                <Link
-                  key={c}
-                  to={`/shop?category=${encodeURIComponent(c)}`}
-                  className={rowClass(activeCategory === c)}
-                >
-                  <Icon className="h-5 w-5 shrink-0 text-primary-400" />
-                  <span className="flex-1">{c}</span>
-                  <ChevronRight className="h-4 w-4 text-dark-500" />
-                </Link>
+                <div key={c}>
+                  <button
+                    onClick={() => setExpanded(isOpen ? null : c)}
+                    aria-expanded={isOpen}
+                    className={`${rowClass(activeCategory === c && !isOpen)} w-full text-left`}
+                  >
+                    <Icon className="h-5 w-5 shrink-0 text-primary-400" />
+                    <span className="flex-1">{c}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 text-dark-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="bg-dark-800/50 py-1">
+                      <Link
+                        to={url}
+                        className={`${rowClass(activeCategory === c && !activeSub)} pl-14 py-2.5`}
+                      >
+                        All {c}
+                      </Link>
+                      {subs.map((sub) => (
+                        <Link
+                          key={sub}
+                          to={`${url}&sub=${encodeURIComponent(sub)}`}
+                          className={`${rowClass(activeCategory === c && activeSub === sub)} pl-14 py-2.5`}
+                        >
+                          {sub}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

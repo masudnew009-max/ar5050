@@ -52,6 +52,7 @@ export type Product = {
   name: string;
   description: string | null;
   category: string | null;
+  subcategory: string | null;
   price: number;
   stock: number;
   unit: string;

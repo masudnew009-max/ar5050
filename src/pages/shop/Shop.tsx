@@ -4,6 +4,7 @@ import { Search, Loader2, PackageSearch } from 'lucide-react';
 import { supabase, Product } from '../../lib/supabase';
 import ReelsStrip from '../../components/ReelsStrip';
 import CategoryGrid from './CategoryGrid';
+import { useSubcategories } from '../../hooks/useSubcategories';
 import ProductCard from './ProductCard';
 
 const PAGE_SIZE = 24;
@@ -12,7 +13,10 @@ type Sort = 'newest' | 'price_asc' | 'price_desc';
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const category = searchParams.get('category') || 'All';
+  const sub = searchParams.get('sub') || '';
   const urlQuery = searchParams.get('q') || '';
+  const subMap = useSubcategories();
+  const subs = category !== 'All' ? subMap[category] ?? [] : [];
 
   const [searchInput, setSearchInput] = useState(urlQuery);
   const [sort, setSort] = useState<Sort>('newest');
@@ -25,11 +29,16 @@ export default function Shop() {
 
   const requestId = useRef(0);
 
-  const updateParams = (next: { category?: string; q?: string }) => {
+  const updateParams = (next: { category?: string; sub?: string; q?: string }) => {
     const params = new URLSearchParams(searchParams);
     if (next.category !== undefined) {
       if (next.category === 'All') params.delete('category');
       else params.set('category', next.category);
+      params.delete('sub'); // a new category clears the sub-category
+    }
+    if (next.sub !== undefined) {
+      if (next.sub) params.set('sub', next.sub);
+      else params.delete('sub');
     }
     if (next.q !== undefined) {
       if (next.q) params.set('q', next.q);
@@ -54,6 +63,7 @@ export default function Shop() {
       .eq('is_active', true);
 
     if (category !== 'All') query = query.eq('category', category);
+    if (category !== 'All' && sub) query = query.eq('subcategory', sub);
     if (urlQuery) query = query.ilike('name', `%${urlQuery}%`);
 
     if (sort === 'price_asc') query = query.order('price', { ascending: true });
@@ -81,7 +91,7 @@ export default function Shop() {
       setLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, urlQuery, sort]);
+  }, [category, sub, urlQuery, sort]);
 
   const loadMore = async () => {
     setLoadingMore(true);
@@ -101,6 +111,24 @@ export default function Shop() {
       <div className="mb-6">
         <CategoryGrid selected={category} onSelect={(c) => updateParams({ category: c })} />
       </div>
+
+      {subs.length > 0 && (
+        <div className="no-scrollbar -mx-4 mb-6 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
+          {['', ...subs].map((s) => (
+            <button
+              key={s || 'all'}
+              onClick={() => updateParams({ sub: s })}
+              className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                sub === s
+                  ? 'bg-primary-600 text-white'
+                  : 'border border-dark-700 bg-dark-800 text-dark-300 hover:text-white'
+              }`}
+            >
+              {s || `All ${category}`}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mb-8"><ReelsStrip limit={12} /></div>
 

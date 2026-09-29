@@ -5,11 +5,13 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { supabase, Product } from '../../lib/supabase';
 import { PRODUCT_CATEGORIES } from '../../lib/categories';
+import { useSubcategories } from '../../hooks/useSubcategories';
 
 const emptyForm = {
   name: '',
   description: '',
   category: PRODUCT_CATEGORIES[0],
+  subcategory: '',
   price: '',
   stock: '',
   unit: 'pcs',
@@ -17,6 +19,7 @@ const emptyForm = {
 
 export default function ProductUpload() {
   const { user } = useAuth();
+  const subMap = useSubcategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +63,7 @@ export default function ProductUpload() {
       name: product.name,
       description: product.description ?? '',
       category: product.category ?? PRODUCT_CATEGORIES[0],
+      subcategory: product.subcategory ?? '',
       price: String(product.price),
       stock: String(product.stock),
       unit: product.unit,
@@ -111,6 +115,8 @@ export default function ProductUpload() {
         name: form.name.trim(),
         description: form.description.trim() || null,
         category: form.category,
+        // only sent once migration 015 is live (sub-categories loaded), so saving never breaks before it
+        ...(Object.keys(subMap).length > 0 ? { subcategory: form.subcategory || null } : {}),
         price,
         stock,
         unit: form.unit.trim() || 'pcs',
@@ -203,13 +209,25 @@ export default function ProductUpload() {
               />
               <select
                 value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: '' })}
                 className="w-full px-3 py-2.5 bg-dark-700 border border-dark-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {PRODUCT_CATEGORIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+              {(subMap[form.category] ?? []).length > 0 && (
+                <select
+                  value={form.subcategory}
+                  onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-dark-700 border border-dark-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Sub-category (optional)</option>
+                  {subMap[form.category].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 

@@ -157,7 +157,7 @@ export default function AdminProducts() {
                 <p className="text-xs text-dark-400 mt-0.5 flex items-center gap-1 flex-wrap">
                   <Store className="w-3 h-3" />
                   {shopNames[p.seller_id] || 'Unknown shop'} · {formatPrice(Number(p.price))} · Stock {p.stock}
-                  {p.category ? ` · ${p.category}` : ''}
+                  {p.category ? ` · ${p.category}${p.subcategory ? ` › ${p.subcategory}` : ''}` : ''}
                 </p>
                 {p.status === 'rejected' && p.rejection_reason && (
                   <p className="text-xs text-red-400 mt-0.5">Reason: {p.rejection_reason}</p>

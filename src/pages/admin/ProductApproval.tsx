@@ -143,7 +143,7 @@ export default function ProductApproval() {
                   )}
 
                   <div className="flex items-center gap-3 mt-2 text-xs text-dark-500">
-                    {product.category && <span>{product.category}</span>}
+                    {product.category && <span>{product.category}{product.subcategory ? ` › ${product.subcategory}` : ''}</span>}
                     <span>Stock: {product.stock} {product.unit}</span>
                   </div>
                 </div>
