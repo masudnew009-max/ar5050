@@ -197,6 +197,14 @@ export async function getSellerKycSignedUrl(path: string, expiresInSeconds = 300
   return data.signedUrl;
 }
 
+export type PayoutAccount = {
+  seller_id: string;
+  method: 'bkash' | 'nagad' | 'rocket' | 'bank';
+  account_number: string;
+  account_name: string | null;
+  bank_details: string | null;
+};
+
 /** One row of payout_summary() (Phase 17b). */
 export type PayoutSummary = {
   seller_id: string;

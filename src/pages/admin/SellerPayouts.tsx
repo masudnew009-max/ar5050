@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Loader2, ChevronDown, ChevronUp, Phone, Trash2 } from 'lucide-react';
-import { supabase, PayoutSummary, SellerPayout } from '../../lib/supabase';
+import { supabase, PayoutSummary, SellerPayout, PayoutAccount } from '../../lib/supabase';
 import { formatPrice } from '../../lib/format';
 
 const METHODS = ['bkash', 'nagad', 'rocket', 'bank', 'cash', 'other'];
@@ -8,6 +8,7 @@ const METHODS = ['bkash', 'nagad', 'rocket', 'bank', 'cash', 'other'];
 export default function AdminSellerPayouts() {
   const [rows, setRows] = useState<PayoutSummary[]>([]);
   const [phones, setPhones] = useState<Record<string, string>>({});
+  const [accounts, setAccounts] = useState<Record<string, PayoutAccount>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,10 +22,14 @@ export default function AdminSellerPayouts() {
 
   const load = async () => {
     setError(null);
-    const [sumRes, phoneRes] = await Promise.all([
+    const [sumRes, phoneRes, acctRes] = await Promise.all([
       supabase.rpc('payout_summary'),
       supabase.from('seller_profiles').select('id, contact_phone'),
+      supabase.from('seller_payout_accounts').select('*'),
     ]);
+    const accMap: Record<string, PayoutAccount> = {};
+    ((acctRes.data as PayoutAccount[]) ?? []).forEach((a) => (accMap[a.seller_id] = a));
+    setAccounts(accMap);
     if (sumRes.error) setError(sumRes.error.message);
     else {
       const list = ((sumRes.data as PayoutSummary[]) ?? []).map((r) => ({
@@ -65,6 +70,7 @@ export default function AdminSellerPayouts() {
     }
     setOpenId(r.seller_id);
     setAmount(r.balance > 0 ? String(r.balance) : '');
+    if (accounts[r.seller_id]) setMethod(accounts[r.seller_id].method);
     setReference('');
     setNote('');
     setHistory([]);
@@ -131,6 +137,15 @@ export default function AdminSellerPayouts() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold truncate">{r.shop_name}</p>
+                    {accounts[r.seller_id] ? (
+                      <p className="text-xs text-primary-300 mt-0.5 select-all">
+                        <span className="uppercase">{accounts[r.seller_id].method}</span>: {accounts[r.seller_id].account_number}
+                        {accounts[r.seller_id].account_name ? ` (${accounts[r.seller_id].account_name})` : ''}
+                        {accounts[r.seller_id].bank_details ? ` · ${accounts[r.seller_id].bank_details}` : ''}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-amber-300/80 mt-0.5">No payout account added yet</p>
+                    )}
                     {phones[r.seller_id] && (
                       <p className="text-xs text-dark-400 flex items-center gap-1 mt-0.5">
                         <Phone className="w-3 h-3" /> {phones[r.seller_id]}

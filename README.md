@@ -1,19 +1,23 @@
-# Multi-Vendor E-commerce Platform
+# Multi-Vendor E-commerce Platform (AR Traders)
 
-Stack: React + Vite + Tailwind CSS + Supabase
+Stack: React + Vite + Tailwind CSS + Supabase (hosted on Vercel)
 
-## Phase 0 — Setup (done)
-- Fresh project structure, based on the old `ar-traders-wholesale-main` codebase.
-- Reused: Tailwind theme (`primary`/`dark` palette), global CSS, Supabase client
-  setup, `AuthModal`, `useAuth` hook, PWA icons/manifest, base tooling
-  (ESLint, TypeScript configs, Vite config).
-- Dropped: all wholesale-specific pages/logic (Inventory, Dues, Barcode
-  scanner, Memo printing, Routes/SR system) — will be replaced by the
-  multi-vendor feature set phase by phase.
-- Role model changed from `admin | sr | customer` to `admin | seller | customer`.
+## What's built
+- **Auth & roles:** admin / seller / customer, Become a Seller with NID KYC.
+- **Shopping:** TikTok-style home feed (reels + products), Shop with category grid and sub-categories,
+  product pages, Cart (localStorage), multi-item Checkout, My Orders.
+- **Payments:** Cash on Delivery, or manual bKash / Nagad / Rocket / bank transfer to the platform's accounts
+  (customer enters a Transaction ID; admin verifies). Admin manages the methods under *Payment Methods*.
+- **Sellers:** analytics, products, reels, payouts and payout account.
+- **Admin panel:** sellers, products, approvals, orders (payment verify/reject), commission, delivery zones,
+  payment methods, seller payouts.
+- **Info pages:** Contact, Shop FAQ, Terms & Conditions.
 
-## Progress
-Phases 0–12 done, plus a full header/footer/home redesign. Brand name lives in `src/lib/brand.ts`. Demo data for testing: run `supabase/seed/demo_data.sql` once in the Supabase SQL Editor. Next: Phase 13 — Courier API.
+## Supabase migrations
+Run every file in `supabase/migrations/` in filename order in the SQL Editor
+(`001` ... `018`). Edge Function `notify-seller` emails sellers on new orders and needs SMTP secrets
+(see the comment at the top of `supabase/functions/notify-seller/index.ts`).
+Demo data for testing: `supabase/seed/demo_data.sql`.
 
 ## Getting started
 
@@ -23,6 +27,7 @@ cp .env.example .env   # fill in your Supabase project URL + anon key
 npm run dev
 ```
 
-## Roadmap
-See `Multi-Vendor-Platform-Phase-Plan.md` for the full phase-by-phase plan
-(Phase 0 through Phase 15).
+## Still to do
+SMS notifications, courier integration (Pathao / Steadfast / RedX), card payments, n8n automation and
+social auto-posting, monetization, real reel comments, final testing and domain move.
+Brand name and contact details live in `src/lib/brand.ts`.
