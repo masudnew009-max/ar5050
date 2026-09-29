@@ -18,6 +18,7 @@ import ReelsFeed from './pages/shop/ReelsFeed';
 import Checkout from './pages/shop/Checkout';
 import OrderDetail from './pages/shop/OrderDetail';
 import MyOrders from './pages/shop/MyOrders';
+import FullScreenFeed from './pages/feed/FullScreenFeed';
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
@@ -46,6 +47,9 @@ function AppRoutes() {
       <Route path="/shop" element={<Layout><Shop /></Layout>} />
       <Route path="/product/:id" element={<Layout><ProductDetail /></Layout>} />
       <Route path="/reels" element={<Layout fullBleed><ReelsFeed /></Layout>} />
+
+      {/* Phase 14ক — full-screen TikTok-style feed, standalone test route (not the homepage yet) */}
+      <Route path="/feed-test" element={<FullScreenFeed />} />
 
       {/* Checkout & orders (Phase 11) — Buy Now buttons link here */}
       <Route path="/checkout/:productId" element={<Layout><Checkout /></Layout>} />
