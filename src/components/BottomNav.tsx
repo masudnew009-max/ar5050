@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogIn, ClipboardList, LayoutDashboard, Store } from 'lucide-react';
+import { LogIn, ClipboardList, LayoutDashboard, Store, ShoppingCart } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { isPathActive, useNavLinks } from './useNavLinks';
+import CartBadge from './CartBadge';
 
 interface BottomNavProps {
   onLoginClick: () => void;
@@ -21,19 +22,26 @@ export default function BottomNav({ onLoginClick }: BottomNavProps) {
         ? { label: 'Dashboard', icon: LayoutDashboard, path: '/seller' }
         : { label: 'Orders', icon: ClipboardList, path: '/orders' };
 
-  const items: Item[] = [...main.map((l) => ({ label: l.label, icon: l.icon, path: l.path })), last];
+  const items: Item[] = [
+    ...main.map((l) => ({ label: l.label, icon: l.icon, path: l.path })),
+    { label: 'Cart', icon: ShoppingCart, path: '/cart' },
+    last,
+  ];
 
   return (
     <nav
       className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-dark-900/95 backdrop-blur-xl border-t border-white/5"
       style={{ height: 'var(--bottom-nav-h)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <div className="h-[60px] grid grid-cols-4">
+      <div className="h-[60px] grid grid-cols-5">
         {items.map((item) => {
           const active = item.path ? isPathActive(location.pathname, item.path) : false;
           const content = (
             <>
-              <item.icon className={`w-5 h-5 ${active ? 'text-primary-400' : ''}`} />
+              <span className="relative">
+                <item.icon className={`w-5 h-5 ${active ? 'text-primary-400' : ''}`} />
+                {item.path === '/cart' && <CartBadge />}
+              </span>
               <span className="text-[11px] font-medium">{item.label}</span>
             </>
           );

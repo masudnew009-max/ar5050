@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Store, Search, Menu, LogIn, LogOut, ChevronDown } from 'lucide-react';
+import { Store, Search, Menu, LogIn, LogOut, ChevronDown, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { BRAND } from '../lib/brand';
 import { isPathActive, useNavLinks } from './useNavLinks';
+import CartBadge from './CartBadge';
 
 interface HeaderProps {
   onLoginClick: () => void;
@@ -92,6 +93,11 @@ export default function Header({ onLoginClick, onMenuClick }: HeaderProps) {
           {/* Mobile search shortcut */}
           <Link to="/shop" className="md:hidden p-2.5 text-dark-300 hover:text-white rounded-full hover:bg-white/5" aria-label="Search">
             <Search className="w-5 h-5" />
+          </Link>
+
+          <Link to="/cart" className="relative p-2.5 text-dark-300 hover:text-white rounded-full hover:bg-white/5" aria-label="Cart">
+            <ShoppingCart className="w-5 h-5" />
+            <CartBadge />
           </Link>
 
           {user ? (

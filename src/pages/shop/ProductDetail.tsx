@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Loader2, Package, Minus, Plus, ShoppingBag, Store, ArrowLeft, Film } from 'lucide-react';
+import { Loader2, Package, Minus, Plus, ShoppingBag, ShoppingCart, Check, Store, ArrowLeft, Film } from 'lucide-react';
 import { supabase, Product, Reel } from '../../lib/supabase';
 import { formatPrice } from '../../lib/format';
+import { useCart } from '../../hooks/useCart';
 import ProductCard from './ProductCard';
 
 export default function ProductDetail() {
@@ -15,6 +16,14 @@ export default function ProductDetail() {
   const [related, setRelated] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
+  const { addItem, items } = useCart();
+  const [justAdded, setJustAdded] = useState(false);
+
+  useEffect(() => {
+    if (!justAdded) return;
+    const t = setTimeout(() => setJustAdded(false), 1800);
+    return () => clearTimeout(t);
+  }, [justAdded]);
 
   useEffect(() => {
     if (!id) return;
@@ -86,6 +95,7 @@ export default function ProductDetail() {
 
   const soldOut = product.stock <= 0;
   const maxQty = Math.max(1, product.stock);
+  const inCartQty = items.find((i) => i.productId === product.id)?.qty ?? 0;
 
   return (
     <div className="text-white max-w-5xl mx-auto">
@@ -151,14 +161,33 @@ export default function ProductDetail() {
             </div>
           )}
 
-          <button
-            disabled={soldOut}
-            onClick={() => navigate(`/checkout/${product.id}?qty=${qty}`)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-dark-700 disabled:text-dark-500 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-primary-600/30 disabled:shadow-none transition-all"
-          >
-            <ShoppingBag className="w-5 h-5" />
-            {soldOut ? 'Sold out' : 'Buy Now'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              disabled={soldOut}
+              onClick={() => {
+                addItem(product, qty);
+                setJustAdded(true);
+              }}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-dark-800 hover:bg-dark-700 border border-primary-600/60 disabled:border-dark-700 disabled:bg-dark-700 disabled:text-dark-500 disabled:cursor-not-allowed text-primary-300 font-semibold rounded-xl transition-all"
+            >
+              {justAdded ? <Check className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+              {justAdded ? 'Added to cart' : 'Add to Cart'}
+            </button>
+            <button
+              disabled={soldOut}
+              onClick={() => navigate(`/checkout/${product.id}?qty=${qty}`)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-dark-700 disabled:text-dark-500 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-primary-600/30 disabled:shadow-none transition-all"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              {soldOut ? 'Sold out' : 'Buy Now'}
+            </button>
+          </div>
+          {inCartQty > 0 && (
+            <p className="text-xs text-dark-400 mt-2">
+              {inCartQty} already in your cart ·{' '}
+              <Link to="/cart" className="text-primary-400 hover:text-primary-300">View cart</Link>
+            </p>
+          )}
 
           {product.description && (
             <div className="mt-6 pt-6 border-t border-dark-700">

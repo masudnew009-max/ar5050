@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { CartProvider } from './hooks/useCart';
 import Layout from './components/Layout';
 import BecomeSeller from './pages/BecomeSeller';
 import AdminLayout from './pages/admin/AdminLayout';
@@ -18,6 +19,7 @@ import Checkout from './pages/shop/Checkout';
 import OrderDetail from './pages/shop/OrderDetail';
 import MyOrders from './pages/shop/MyOrders';
 import FullScreenFeed from './pages/feed/FullScreenFeed';
+import Cart from './pages/shop/Cart';
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
@@ -49,6 +51,9 @@ function AppRoutes() {
 
       {/* Phase 14 — full-screen TikTok-style feed (home = with header + bottom nav) */}
       <Route path="/feed-test" element={<FullScreenFeed />} />
+
+      {/* Cart (Phase 15ঘ — basic list; full editing in 15ঙ) */}
+      <Route path="/cart" element={<Layout><Cart /></Layout>} />
 
       {/* Checkout & orders (Phase 11) — Buy Now buttons link here */}
       <Route path="/checkout/:productId" element={<Layout><Checkout /></Layout>} />
@@ -118,7 +123,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
+        <CartProvider>
+          <AppRoutes />
+        </CartProvider>
       </AuthProvider>
     </Router>
   );
