@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Film, Loader2, Volume2, VolumeX } from 'lucide-react';
-import { supabase, ReelWithProduct } from '../../lib/supabase';
+import { supabase, Product, ReelWithProduct } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { AuthModal } from '../../components/AuthModal';
 import ReelSlide from '../../components/feed/ReelSlide';
+import ProductSlide from '../../components/feed/ProductSlide';
+import { buildFeed } from '../../components/feed/types';
 
 /**
  * Phase 14ক — TikTok-style full-screen vertical feed (reels only).
@@ -16,6 +18,7 @@ export default function FullScreenFeed() {
   const { user } = useAuth();
 
   const [reels, setReels] = useState<ReelWithProduct[]>([]);
+  const [plainProducts, setPlainProducts] = useState<Product[]>([]);
   const [shops, setShops] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +31,8 @@ export default function FullScreenFeed() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [showAuth, setShowAuth] = useState(false);
   const pendingLikes = useRef<Set<string>>(new Set());
+
+  const items = useMemo(() => buildFeed(reels, plainProducts), [reels, plainProducts]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -47,11 +52,26 @@ export default function FullScreenFeed() {
         return;
       }
 
-      const list = ((data as ReelWithProduct[]) ?? []).filter((r) => r.product);
+      // Admins/sellers can also read non-approved rows, so re-check visibility here
+      const list = ((data as ReelWithProduct[]) ?? []).filter(
+        (r) => r.product && r.product.status === 'approved' && r.product.is_active
+      );
       setReels(list);
       setCounts(Object.fromEntries(list.map((r) => [r.id, r.like_count ?? 0])));
 
-      const sellerIds = [...new Set(list.map((r) => r.seller_id))];
+      // Approved products that have no reel -> shown as product cards (14গ)
+      const withReel = new Set(list.map((r) => r.product_id));
+      const { data: prodData } = await supabase
+        .from('products')
+        .select('*')
+        .eq('status', 'approved')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(60);
+      const plain = ((prodData as Product[]) ?? []).filter((p) => !withReel.has(p.id)).slice(0, 30);
+      setPlainProducts(plain);
+
+      const sellerIds = [...new Set([...list.map((r) => r.seller_id), ...plain.map((p) => p.seller_id)])];
       if (sellerIds.length > 0) {
         const { data: sellers } = await supabase
           .from('seller_profiles')
@@ -117,7 +137,7 @@ export default function FullScreenFeed() {
   // ---- Track which slide is centered ----
   useEffect(() => {
     const root = containerRef.current;
-    if (!root || reels.length === 0) return;
+    if (!root || items.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -132,7 +152,7 @@ export default function FullScreenFeed() {
 
     root.querySelectorAll('[data-index]').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [reels]);
+  }, [items]);
 
   // ---- Arrow-key navigation (desktop) ----
   useEffect(() => {
@@ -168,7 +188,7 @@ export default function FullScreenFeed() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          {reels.length > 0 && (
+          {items.length > 0 && (
             <button
               onClick={() => setMuted((m) => !m)}
               className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur"
@@ -184,10 +204,10 @@ export default function FullScreenFeed() {
         <div className="flex h-full items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
         </div>
-      ) : error || reels.length === 0 ? (
+      ) : error || items.length === 0 ? (
         <div className="flex h-full flex-col items-center justify-center px-6 text-center">
           <Film className="mb-3 h-12 w-12 text-dark-500" />
-          <p className="mb-4 text-dark-400">{error ?? 'No reels yet — check back soon.'}</p>
+          <p className="mb-4 text-dark-400">{error ?? 'Nothing to show yet — check back soon.'}</p>
           <Link to="/shop" className="text-primary-400 hover:text-primary-300">
             Browse the shop
           </Link>
@@ -197,18 +217,22 @@ export default function FullScreenFeed() {
           ref={containerRef}
           className="no-scrollbar h-full snap-y snap-mandatory overflow-y-scroll overscroll-contain"
         >
-          {reels.map((reel, i) => (
-            <div key={reel.id} data-index={i} className="h-full w-full">
-              <ReelSlide
-                reel={reel}
-                shopName={shops[reel.seller_id]}
-                isActive={i === active}
-                isNear={Math.abs(i - active) <= 1}
-                muted={muted}
-                liked={likedIds.has(reel.id)}
-                likeCount={counts[reel.id] ?? 0}
-                onToggleLike={() => toggleLike(reel.id)}
-              />
+          {items.map((item, i) => (
+            <div key={item.key} data-index={i} className="h-full w-full">
+              {item.kind === 'reel' ? (
+                <ReelSlide
+                  reel={item.reel}
+                  shopName={shops[item.reel.seller_id]}
+                  isActive={i === active}
+                  isNear={Math.abs(i - active) <= 1}
+                  muted={muted}
+                  liked={likedIds.has(item.reel.id)}
+                  likeCount={counts[item.reel.id] ?? 0}
+                  onToggleLike={() => toggleLike(item.reel.id)}
+                />
+              ) : (
+                <ProductSlide product={item.product} shopName={shops[item.product.seller_id]} />
+              )}
             </div>
           ))}
         </div>
