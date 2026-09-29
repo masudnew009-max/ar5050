@@ -6,8 +6,15 @@ export const BRAND = {
   about:
     'A marketplace where independent sellers list their products and customers shop from catalogs and shoppable reels. Every product is reviewed by our team before it goes live.',
   contact: {
-    phone: '',
-    email: '',
+    phone: '01968673241',
+    email: 'mdminhajam@gmail.com',
     address: '',
   },
 };
+
+/** Pages linked from the drawer and footer (Phase 15ছ). */
+export const INFO_LINKS = [
+  { label: 'Contact Us', path: '/contact' },
+  { label: 'Shop FAQ', path: '/faq' },
+  { label: 'Terms & Conditions', path: '/terms' },
+] as const;

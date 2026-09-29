@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Store, Phone, Mail, MapPin, Banknote } from 'lucide-react';
-import { BRAND } from '../lib/brand';
+import { BRAND, INFO_LINKS } from '../lib/brand';
 import { PRODUCT_CATEGORIES } from '../lib/categories';
 import { useNavLinks } from './useNavLinks';
 
@@ -71,7 +71,13 @@ export default function Footer() {
 
         <div className="mt-10 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-dark-500">
           <p>&copy; {new Date().getFullYear()} {BRAND.name}. All rights reserved.</p>
-          <p>{BRAND.tagline}</p>
+          <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            {INFO_LINKS.map((l) => (
+              <li key={l.path}>
+                <Link to={l.path} className="hover:text-primary-300 transition-colors">{l.label}</Link>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </footer>

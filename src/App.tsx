@@ -20,6 +20,9 @@ import OrderDetail from './pages/shop/OrderDetail';
 import MyOrders from './pages/shop/MyOrders';
 import FullScreenFeed from './pages/feed/FullScreenFeed';
 import Cart from './pages/shop/Cart';
+import Contact from './pages/info/Contact';
+import Faq from './pages/info/Faq';
+import Terms from './pages/info/Terms';
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
@@ -51,6 +54,11 @@ function AppRoutes() {
 
       {/* Phase 14 — full-screen TikTok-style feed (home = with header + bottom nav) */}
       <Route path="/feed-test" element={<FullScreenFeed />} />
+
+      {/* Info pages (Phase 15ছ) */}
+      <Route path="/contact" element={<Layout><Contact /></Layout>} />
+      <Route path="/faq" element={<Layout><Faq /></Layout>} />
+      <Route path="/terms" element={<Layout><Terms /></Layout>} />
 
       {/* Cart (Phase 15ঘ — basic list; full editing in 15ঙ) */}
       <Route path="/cart" element={<Layout><Cart /></Layout>} />

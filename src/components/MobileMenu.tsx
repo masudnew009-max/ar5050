@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, LogIn, LogOut, ChevronRight, ChevronDown, LayoutGrid } from 'lucide-react';
+import { X, LogIn, LogOut, ChevronRight, ChevronDown, LayoutGrid, Phone, HelpCircle, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { PRODUCT_CATEGORIES } from '../lib/categories';
 import { categoryIcon } from '../lib/category-icons';
-import { BRAND } from '../lib/brand';
+import { BRAND, INFO_LINKS } from '../lib/brand';
 import { useSubcategories } from '../hooks/useSubcategories';
 import { isPathActive, useNavLinks } from './useNavLinks';
 
@@ -194,6 +194,21 @@ export default function MobileMenu({ open, onClose, onLoginClick }: MobileMenuPr
                 {l.label}
               </Link>
             ))}
+          </nav>
+
+          {/* Help & info */}
+          <div className="mx-5 my-3 border-t border-dark-700" />
+          <p className="px-5 pb-1 text-xs font-medium text-dark-400">Help &amp; info</p>
+          <nav>
+            {INFO_LINKS.map((l) => {
+              const Icon = l.path === '/contact' ? Phone : l.path === '/faq' ? HelpCircle : FileText;
+              return (
+                <Link key={l.path} to={l.path} className={rowClass(isPathActive(location.pathname, l.path))}>
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {l.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Account */}
