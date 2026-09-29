@@ -89,6 +89,7 @@ export type Reel = {
   thumbnail_url: string | null;
   caption: string | null;
   is_active: boolean;
+  like_count: number;
   created_at: string;
   updated_at: string;
 };

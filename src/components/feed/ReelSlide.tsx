@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Play, ShoppingBag } from 'lucide-react';
+import { Heart, MessageCircle, Package, Play, ShoppingBag } from 'lucide-react';
 import type { ReelWithProduct } from '../../lib/supabase';
-import { formatPrice } from '../../lib/format';
+import { formatCount, formatPrice } from '../../lib/format';
 
 interface ReelSlideProps {
   reel: ReelWithProduct;
@@ -12,13 +12,16 @@ interface ReelSlideProps {
   /** Active slide or its direct neighbour — only these load video data. */
   isNear: boolean;
   muted: boolean;
+  liked: boolean;
+  likeCount: number;
+  onToggleLike: () => void;
 }
 
 /**
  * One full-screen reel: video, seller/caption, and a Buy Now bar.
  * Plays only while active, pauses (and rewinds) when scrolled away.
  */
-export default function ReelSlide({ reel, shopName, isActive, isNear, muted }: ReelSlideProps) {
+export default function ReelSlide({ reel, shopName, isActive, isNear, muted, liked, likeCount, onToggleLike }: ReelSlideProps) {
   const navigate = useNavigate();
   const product = reel.product!;
   const soldOut = product.stock <= 0;
@@ -100,6 +103,37 @@ export default function ReelSlide({ reel, shopName, isActive, isNear, muted }: R
             <Play className="h-16 w-16 fill-white/80 text-white/80" />
           </div>
         )}
+
+        {/* Right action rail: Like + Comment (comment opens the product page for now) */}
+        <div
+          className="absolute right-3 z-20 flex flex-col items-center gap-5"
+          style={{ bottom: 'calc(11rem + env(safe-area-inset-bottom, 0px))' }}
+        >
+          <button
+            onClick={onToggleLike}
+            className="flex flex-col items-center gap-1 text-white"
+            aria-label={liked ? 'Unlike' : 'Like'}
+            aria-pressed={liked}
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur">
+              <Heart
+                className={`h-6 w-6 transition-transform active:scale-125 ${
+                  liked ? 'fill-red-500 text-red-500' : ''
+                }`}
+              />
+            </span>
+            <span className="text-xs font-semibold drop-shadow">{formatCount(likeCount)}</span>
+          </button>
+          <button
+            onClick={() => navigate(`/product/${product.id}`)}
+            className="flex flex-col items-center gap-1 text-white"
+            aria-label="Comments — open product page"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur">
+              <MessageCircle className="h-6 w-6" />
+            </span>
+          </button>
+        </div>
 
         {/* Bottom info + Buy Now */}
         <div

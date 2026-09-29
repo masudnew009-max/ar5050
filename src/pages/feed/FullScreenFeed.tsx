@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Film, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { supabase, ReelWithProduct } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
+import { AuthModal } from '../../components/AuthModal';
 import ReelSlide from '../../components/feed/ReelSlide';
 
 /**
@@ -11,6 +13,7 @@ import ReelSlide from '../../components/feed/ReelSlide';
  */
 export default function FullScreenFeed() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [reels, setReels] = useState<ReelWithProduct[]>([]);
   const [shops, setShops] = useState<Record<string, string>>({});
@@ -19,6 +22,12 @@ export default function FullScreenFeed() {
 
   const [active, setActive] = useState(0);
   const [muted, setMuted] = useState(true);
+
+  // Likes (14খ)
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [showAuth, setShowAuth] = useState(false);
+  const pendingLikes = useRef<Set<string>>(new Set());
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +49,7 @@ export default function FullScreenFeed() {
 
       const list = ((data as ReelWithProduct[]) ?? []).filter((r) => r.product);
       setReels(list);
+      setCounts(Object.fromEntries(list.map((r) => [r.id, r.like_count ?? 0])));
 
       const sellerIds = [...new Set(list.map((r) => r.seller_id))];
       if (sellerIds.length > 0) {
@@ -56,6 +66,53 @@ export default function FullScreenFeed() {
       setLoading(false);
     })();
   }, []);
+
+  // ---- Which of these reels has the signed-in user liked? ----
+  useEffect(() => {
+    if (!user || reels.length === 0) {
+      setLikedIds(new Set());
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from('reel_likes')
+        .select('reel_id')
+        .eq('user_id', user.id)
+        .in('reel_id', reels.map((r) => r.id));
+      setLikedIds(new Set((data as { reel_id: string }[] | null)?.map((l) => l.reel_id) ?? []));
+    })();
+  }, [user, reels]);
+
+  // ---- Like / unlike (optimistic, reverts if the request fails) ----
+  const toggleLike = async (reelId: string) => {
+    if (!user) {
+      setShowAuth(true);
+      return;
+    }
+    if (pendingLikes.current.has(reelId)) return;
+    pendingLikes.current.add(reelId);
+
+    const wasLiked = likedIds.has(reelId);
+    const apply = (liked: boolean) => {
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (liked) next.add(reelId);
+        else next.delete(reelId);
+        return next;
+      });
+      setCounts((prev) => ({
+        ...prev,
+        [reelId]: Math.max((prev[reelId] ?? 0) + (liked ? 1 : -1), 0),
+      }));
+    };
+
+    apply(!wasLiked);
+    const { error: err } = wasLiked
+      ? await supabase.from('reel_likes').delete().eq('reel_id', reelId).eq('user_id', user.id)
+      : await supabase.from('reel_likes').insert({ reel_id: reelId, user_id: user.id });
+    if (err) apply(wasLiked); // roll back
+    pendingLikes.current.delete(reelId);
+  };
 
   // ---- Track which slide is centered ----
   useEffect(() => {
@@ -148,11 +205,15 @@ export default function FullScreenFeed() {
                 isActive={i === active}
                 isNear={Math.abs(i - active) <= 1}
                 muted={muted}
+                liked={likedIds.has(reel.id)}
+                likeCount={counts[reel.id] ?? 0}
+                onToggleLike={() => toggleLike(reel.id)}
               />
             </div>
           ))}
         </div>
       )}
+      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} title="Sign in to like reels" />
     </div>
   );
 }
