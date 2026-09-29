@@ -147,7 +147,7 @@ export default function Header({ onLoginClick, onMenuClick }: HeaderProps) {
             </button>
           )}
 
-          <button onClick={onMenuClick} className="lg:hidden p-2.5 text-dark-200 hover:text-white rounded-full hover:bg-white/5" aria-label="Menu">
+          <button onClick={onMenuClick} className="p-2.5 text-dark-200 hover:text-white rounded-full hover:bg-white/5" aria-label="Menu">
             <Menu className="w-6 h-6" />
           </button>
         </div>
