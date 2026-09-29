@@ -31,7 +31,11 @@ export default function Layout({ children, fullBleed = false }: LayoutProps) {
 
       {!fullBleed && <Footer />}
 
-      <BottomNav onLoginClick={() => setShowAuthModal(true)} />
+      <BottomNav
+        onLoginClick={() => setShowAuthModal(true)}
+        onCategoriesClick={() => setMenuOpen(true)}
+        categoriesActive={menuOpen}
+      />
       <InstallButton />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>

@@ -1,17 +1,21 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogIn, ClipboardList, LayoutDashboard, Store, ShoppingCart } from 'lucide-react';
+import { LogIn, ClipboardList, LayoutDashboard, Store, ShoppingCart, Home, LayoutGrid, Film } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { isPathActive, useNavLinks } from './useNavLinks';
 import CartBadge from './CartBadge';
 
 interface BottomNavProps {
   onLoginClick: () => void;
+  /** Opens the side drawer (the "Categories" tab). */
+  onCategoriesClick: () => void;
+  /** True while the drawer is open, so the Categories tab lights up. */
+  categoriesActive?: boolean;
 }
 
-type Item = { label: string; icon: LucideIcon; path?: string; onClick?: () => void };
+type Item = { label: string; icon: LucideIcon; path?: string; onClick?: () => void; active?: boolean };
 
-export default function BottomNav({ onLoginClick }: BottomNavProps) {
-  const { main, user, isAdmin, isSeller } = useNavLinks();
+export default function BottomNav({ onLoginClick, onCategoriesClick, categoriesActive = false }: BottomNavProps) {
+  const { user, isAdmin, isSeller } = useNavLinks();
   const location = useLocation();
 
   const last: Item = !user
@@ -22,8 +26,11 @@ export default function BottomNav({ onLoginClick }: BottomNavProps) {
         ? { label: 'Dashboard', icon: LayoutDashboard, path: '/seller' }
         : { label: 'Orders', icon: ClipboardList, path: '/orders' };
 
+  // Home / Categories (opens the drawer) / Reels / Cart / Account
   const items: Item[] = [
-    ...main.map((l) => ({ label: l.label, icon: l.icon, path: l.path })),
+    { label: 'Home', icon: Home, path: '/' },
+    { label: 'Categories', icon: LayoutGrid, onClick: onCategoriesClick, active: categoriesActive },
+    { label: 'Reels', icon: Film, path: '/reels' },
     { label: 'Cart', icon: ShoppingCart, path: '/cart' },
     last,
   ];
@@ -35,7 +42,7 @@ export default function BottomNav({ onLoginClick }: BottomNavProps) {
     >
       <div className="h-[60px] grid grid-cols-5">
         {items.map((item) => {
-          const active = item.path ? isPathActive(location.pathname, item.path) : false;
+          const active = item.path ? isPathActive(location.pathname, item.path) : Boolean(item.active);
           const content = (
             <>
               <span className="relative">
