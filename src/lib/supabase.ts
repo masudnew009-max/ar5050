@@ -26,6 +26,8 @@ export type Profile = {
   created_at: string;
 };
 
+export type KycStatus = 'pending' | 'approved' | 'rejected';
+
 export type SellerProfile = {
   id: string;
   shop_name: string;
@@ -34,6 +36,12 @@ export type SellerProfile = {
   contact_phone: string | null;
   address: string | null;
   created_at: string;
+  nid_number: string | null;
+  nid_name: string | null;
+  nid_front_url: string | null;
+  nid_back_url: string | null;
+  kyc_status: KycStatus;
+  kyc_rejection_reason: string | null;
 };
 
 export type ProductStatus = 'pending' | 'approved' | 'rejected';
@@ -132,6 +140,14 @@ export type OrderItem = {
 export async function registerSeller(params: {
   shopName: string;
   shopSlug: string;
+  /** NID number as printed on the card */
+  nidNumber: string;
+  /** Name as printed on the NID (may differ from the account's full name) */
+  nidName: string;
+  /** Storage PATH (not a URL) inside the private `seller-kyc` bucket, e.g. `${uid}/front-123.jpg` */
+  nidFrontPath: string;
+  /** Storage PATH (not a URL) inside the private `seller-kyc` bucket */
+  nidBackPath: string;
   shopDescription?: string;
   contactPhone?: string;
   address?: string;
@@ -139,9 +155,24 @@ export async function registerSeller(params: {
   const { error } = await supabase.rpc('register_seller', {
     p_shop_name: params.shopName,
     p_shop_slug: params.shopSlug,
+    p_nid_number: params.nidNumber,
+    p_nid_name: params.nidName,
+    p_nid_front_url: params.nidFrontPath,
+    p_nid_back_url: params.nidBackPath,
     p_shop_description: params.shopDescription ?? null,
     p_contact_phone: params.contactPhone ?? null,
     p_address: params.address ?? null,
   });
   if (error) throw error;
+}
+
+/**
+ * Creates a short-lived signed URL for a private seller-kyc object (front
+ * or back NID photo). Only the owning seller or an admin can succeed here
+ * — enforced by the bucket's RLS, not by this function.
+ */
+export async function getSellerKycSignedUrl(path: string, expiresInSeconds = 300) {
+  const { data, error } = await supabase.storage.from('seller-kyc').createSignedUrl(path, expiresInSeconds);
+  if (error) throw error;
+  return data.signedUrl;
 }
