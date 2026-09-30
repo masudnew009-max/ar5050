@@ -9,21 +9,25 @@ export default function Contact() {
 
   return (
     <InfoPage title="Contact Us" intro="Questions about an order, a product or selling with us? Reach out any time.">
-      <div className="grid sm:grid-cols-2 gap-4">
-        <a href={`tel:${phone}`} className={card}>
-          <Phone className={icon} />
-          <span>
-            <span className="block text-sm text-dark-400">Call us</span>
-            <span className="font-semibold">{phone}</span>
-          </span>
-        </a>
-        <a href={`mailto:${email}`} className={card}>
-          <Mail className={icon} />
-          <span className="min-w-0">
-            <span className="block text-sm text-dark-400">Email us</span>
-            <span className="font-semibold break-all">{email}</span>
-          </span>
-        </a>
+      <div className={`grid gap-4 ${phone && email ? 'sm:grid-cols-2' : ''}`}>
+        {phone && (
+          <a href={`tel:${phone}`} className={card}>
+            <Phone className={icon} />
+            <span>
+              <span className="block text-sm text-dark-400">Call us</span>
+              <span className="font-semibold">{phone}</span>
+            </span>
+          </a>
+        )}
+        {email && (
+          <a href={`mailto:${email}`} className={card}>
+            <Mail className={icon} />
+            <span className="min-w-0">
+              <span className="block text-sm text-dark-400">Email us</span>
+              <span className="font-semibold break-all">{email}</span>
+            </span>
+          </a>
+        )}
       </div>
 
       <Section title="Where do I send a return?">

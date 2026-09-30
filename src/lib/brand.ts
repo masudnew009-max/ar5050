@@ -6,8 +6,8 @@ export const BRAND = {
   about:
     'A marketplace where independent sellers list their products and customers shop from catalogs and shoppable reels. Every product is reviewed by our team before it goes live.',
   contact: {
-    phone: '01968673241',
-    email: 'mdminhajam@gmail.com',
+    phone: '',
+    email: 'artreadrsaminur@gmail.com',
     address: '',
   },
 };
