@@ -12,12 +12,16 @@ Stack: React + Vite + Tailwind CSS + Supabase (hosted on Vercel)
 - **Admin panel:** sellers, products, approvals, orders (payment verify/reject), commission, delivery zones,
   payment methods, seller payouts.
 - **Info pages:** Contact, Shop FAQ, Terms & Conditions.
+- **Reel sound:** reels start muted (browser rule) and switch to sound automatically after the first tap;
+  a deliberate mute is remembered on the device.
+- **Audit log:** `audit_logs` (append-only, admin-read only) records payment-status changes and seller payouts.
 
 ## Supabase migrations
 Run every file in `supabase/migrations/` in filename order in the SQL Editor
-(`001` ... `018`). Edge Function `notify-seller` emails sellers on new orders and needs SMTP secrets
+(`001` ... `020`). Edge Function `notify-seller` emails sellers on new orders and needs SMTP secrets
 (see the comment at the top of `supabase/functions/notify-seller/index.ts`).
 Demo data for testing: `supabase/seed/demo_data.sql`.
+`supabase/audit/step0_db_audit.sql` holds read-only checks (RLS, policies, buckets) to run against the live database.
 
 ## Getting started
 

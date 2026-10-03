@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Loader2, Package, Minus, Plus, ShoppingBag, ShoppingCart, Check, Store, ArrowLeft, Film } from 'lucide-react';
-import { supabase, Product, Reel } from '../../lib/supabase';
+import { supabase, fetchShopNames, Product, Reel } from '../../lib/supabase';
 import { formatPrice } from '../../lib/format';
 import { useCart } from '../../hooks/useCart';
 import ProductCard from './ProductCard';
@@ -46,7 +46,7 @@ export default function ProductDetail() {
 
       if (p) {
         const [shopRes, reelRes, relatedRes] = await Promise.all([
-          supabase.from('seller_profiles').select('shop_name').eq('id', p.seller_id).maybeSingle(),
+          fetchShopNames([p.seller_id]),
           supabase.from('reels').select('*').eq('product_id', p.id).eq('is_active', true).limit(6),
           p.category
             ? supabase
@@ -61,7 +61,7 @@ export default function ProductDetail() {
             : Promise.resolve({ data: [] as Product[] }),
         ]);
         if (cancelled) return;
-        setShopName((shopRes.data as { shop_name: string } | null)?.shop_name ?? null);
+        setShopName(shopRes[p.seller_id] ?? null);
         setReels((reelRes.data as Reel[]) ?? []);
         setRelated((relatedRes.data as Product[]) ?? []);
       }

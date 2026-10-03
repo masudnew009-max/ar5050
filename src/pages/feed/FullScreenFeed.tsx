@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Film, Loader2, Sparkles, Volume2, VolumeX } from 'lucide-react';
-import { supabase, Product, ReelWithProduct } from '../../lib/supabase';
+import { supabase, fetchShopNames, Product, ReelWithProduct } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useReelSound } from '../../hooks/useReelSound';
 import { AuthModal } from '../../components/AuthModal';
 import ReelSlide from '../../components/feed/ReelSlide';
 import ProductSlide from '../../components/feed/ProductSlide';
@@ -32,7 +33,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
   const [error, setError] = useState<string | null>(null);
 
   const [active, setActive] = useState(0);
-  const [muted, setMuted] = useState(true);
+  const { muted, needsTap, toggle: toggleSound, onPlayBlocked } = useReelSound();
 
   // Likes (14খ)
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
@@ -80,18 +81,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
       const plain = ((prodData as Product[]) ?? []).filter((p) => !withReel.has(p.id)).slice(0, 30);
       setPlainProducts(plain);
 
-      const sellerIds = [...new Set([...list.map((r) => r.seller_id), ...plain.map((p) => p.seller_id)])];
-      if (sellerIds.length > 0) {
-        const { data: sellers } = await supabase
-          .from('seller_profiles')
-          .select('id, shop_name')
-          .in('id', sellerIds);
-        const map: Record<string, string> = {};
-        (sellers as { id: string; shop_name: string }[] | null)?.forEach((s) => {
-          map[s.id] = s.shop_name;
-        });
-        setShops(map);
-      }
+      setShops(await fetchShopNames([...list.map((r) => r.seller_id), ...plain.map((p) => p.seller_id)]));
       setLoading(false);
     })();
   }, []);
@@ -230,7 +220,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
           )}
           {items.length > 0 && (
             <button
-              onClick={() => setMuted((m) => !m)}
+              onClick={toggleSound}
               className="pointer-events-auto ml-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur"
               aria-label={muted ? 'Unmute' : 'Mute'}
             >
@@ -239,6 +229,15 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
           )}
         </div>
       </div>
+
+      {/* Shown until the first tap, when the browser lets sound start */}
+      {needsTap && items.length > 0 && !loading && (
+        <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center">
+          <span className="rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
+            সাউন্ড চালু করতে ট্যাপ করুন
+          </span>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex h-full items-center justify-center">
@@ -266,6 +265,8 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
                   isActive={i === active}
                   isNear={Math.abs(i - active) <= 1}
                   muted={muted}
+                  soundLocked={needsTap}
+                  onPlayBlocked={onPlayBlocked}
                   liked={likedIds.has(item.reel.id)}
                   likeCount={counts[item.reel.id] ?? 0}
                   onToggleLike={() => toggleLike(item.reel.id)}

@@ -12,6 +12,10 @@ interface ReelSlideProps {
   /** Active slide or its direct neighbour — only these load video data. */
   isNear: boolean;
   muted: boolean;
+  /** Sound is off only because the browser hasn't had a tap yet — the first tap should just enable sound. */
+  soundLocked: boolean;
+  /** play() with sound was refused by the browser (autoplay policy). */
+  onPlayBlocked: () => void;
   liked: boolean;
   likeCount: number;
   onToggleLike: () => void;
@@ -21,7 +25,7 @@ interface ReelSlideProps {
  * One full-screen reel: video, seller/caption, and a Buy Now bar.
  * Plays only while active, pauses (and rewinds) when scrolled away.
  */
-export default function ReelSlide({ reel, shopName, isActive, isNear, muted, liked, likeCount, onToggleLike }: ReelSlideProps) {
+export default function ReelSlide({ reel, shopName, isActive, isNear, muted, soundLocked, onPlayBlocked, liked, likeCount, onToggleLike }: ReelSlideProps) {
   const navigate = useNavigate();
   const product = reel.product!;
   const soldOut = product.stock <= 0;
@@ -42,8 +46,14 @@ export default function ReelSlide({ reel, shopName, isActive, isNear, muted, lik
     video.muted = muted;
 
     if (isActive && !userPaused) {
-      video.play().catch(() => {
-        /* autoplay blocked — the tap-to-play icon covers this */
+      video.play().catch((err: unknown) => {
+        // Sound was refused by the browser: fall back to muted playback and
+        // let the feed show the "tap for sound" hint again.
+        if (!muted && err instanceof DOMException && err.name === 'NotAllowedError') {
+          video.muted = true;
+          video.play().catch(() => {});
+          onPlayBlocked();
+        }
       });
     } else {
       video.pause();
@@ -52,7 +62,7 @@ export default function ReelSlide({ reel, shopName, isActive, isNear, muted, lik
         setProgress(0);
       }
     }
-  }, [isActive, userPaused, muted, isNear]);
+  }, [isActive, userPaused, muted, isNear, onPlayBlocked]);
 
   // Pause when the browser tab is hidden
   useEffect(() => {
@@ -70,6 +80,8 @@ export default function ReelSlide({ reel, shopName, isActive, isNear, muted, lik
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
+    // First tap of the visit only turns the sound on; it must not pause the reel.
+    if (soundLocked) return;
     if (video.paused) {
       setUserPaused(false);
       video.play().catch(() => {});

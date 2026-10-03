@@ -1,0 +1,50 @@
+-- Step 0 audit: READ-ONLY checks. Safe to run in the Supabase SQL Editor; it changes nothing.
+-- Run each block and compare with the expected result in the comment above it.
+
+-- 1) Tables in `public` WITHOUT row level security. Expected: 0 rows.
+SELECT c.relname AS table_without_rls
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity
+ORDER BY 1;
+
+-- 2) Every policy (to compare with the migrations). Expected: a policy list that matches 001-020.
+SELECT tablename, policyname, cmd, roles
+FROM pg_policies
+WHERE schemaname = 'public'
+ORDER BY tablename, policyname;
+
+-- 3) Tables that have RLS on but NO policy at all (nobody but admin/service can use them). Review each row.
+SELECT c.relname AS rls_on_but_no_policy
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity
+  AND NOT EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = c.relname)
+ORDER BY 1;
+
+-- 4) SECURITY DEFINER functions without a pinned search_path. Expected: 0 rows (after migration 020).
+SELECT p.proname AS definer_function_without_search_path
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.prosecdef
+  AND coalesce(p.proconfig::text, '') NOT LIKE '%search_path%'
+ORDER BY 1;
+
+-- 5) Which migrations have really been run? Each row should say true.
+SELECT t AS expected_table, to_regclass('public.' || t) IS NOT NULL AS exists_in_db
+FROM unnest(ARRAY[
+  'profiles','seller_profiles','products','commission_settings','delivery_zones','reels',
+  'orders','order_items','order_notifications','reel_likes','categories',
+  'payment_methods','seller_payouts','seller_payout_accounts','audit_logs'
+]) AS t;
+
+-- 6) Storage buckets. Expected: product-images (public), reel-videos (public), seller-kyc (PRIVATE).
+SELECT id, public FROM storage.buckets ORDER BY id;
+
+-- 7) The old direct-insert policies must be gone. Expected: 0 rows.
+SELECT tablename, policyname FROM pg_policies
+WHERE schemaname = 'public'
+  AND policyname IN ('customer_insert_own_orders', 'customer_insert_own_order_items');
+
+-- 8) Admin accounts. Expected: only people you know.
+SELECT email, role, is_active FROM profiles WHERE role = 'admin';

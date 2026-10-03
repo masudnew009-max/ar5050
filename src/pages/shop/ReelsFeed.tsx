@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Volume2, VolumeX, Share2, ShoppingBag, Package, Film, Play } from 'lucide-react';
-import { supabase, ReelWithProduct } from '../../lib/supabase';
+import { supabase, fetchShopNames, ReelWithProduct } from '../../lib/supabase';
 import { formatPrice } from '../../lib/format';
+import { useReelSound } from '../../hooks/useReelSound';
 
 export default function ReelsFeed() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export default function ReelsFeed() {
   const [error, setError] = useState<string | null>(null);
 
   const [active, setActive] = useState(0);
-  const [muted, setMuted] = useState(true);
+  const { muted, needsTap, toggle: toggleSound, onPlayBlocked } = useReelSound();
   const [manualPaused, setManualPaused] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -42,18 +43,7 @@ export default function ReelsFeed() {
       const list = ((data as ReelWithProduct[]) ?? []).filter((r) => r.product);
       setReels(list);
 
-      const sellerIds = [...new Set(list.map((r) => r.seller_id))];
-      if (sellerIds.length > 0) {
-        const { data: sellers } = await supabase
-          .from('seller_profiles')
-          .select('id, shop_name')
-          .in('id', sellerIds);
-        const map: Record<string, string> = {};
-        (sellers as { id: string; shop_name: string }[] | null)?.forEach((s) => {
-          map[s.id] = s.shop_name;
-        });
-        setShops(map);
-      }
+      setShops(await fetchShopNames(list.map((r) => r.seller_id)));
       setLoading(false);
     })();
   }, []);
@@ -98,13 +88,20 @@ export default function ReelsFeed() {
       const idx = Number(key);
       video.muted = muted;
       if (idx === active && manualPaused !== active) {
-        video.play().catch(() => {});
+        video.play().catch((err: unknown) => {
+          // Browser refused sound: play muted and show the "tap for sound" hint again
+          if (!muted && err instanceof DOMException && err.name === 'NotAllowedError') {
+            video.muted = true;
+            video.play().catch(() => {});
+            onPlayBlocked();
+          }
+        });
       } else {
         video.pause();
         if (idx !== active) video.currentTime = 0;
       }
     });
-  }, [active, muted, manualPaused, reels]);
+  }, [active, muted, manualPaused, reels, onPlayBlocked]);
 
   // ---- Keyboard navigation (desktop) ----
   const scrollByReel = useCallback((dir: 1 | -1) => {
@@ -138,6 +135,8 @@ export default function ReelsFeed() {
   const togglePlay = (idx: number) => {
     const video = videoRefs.current[idx];
     if (!video) return;
+    // First tap of the visit only turns the sound on; it must not pause the reel.
+    if (needsTap) return;
     if (video.paused) {
       setManualPaused(null);
       video.play().catch(() => {});
@@ -223,7 +222,7 @@ export default function ReelsFeed() {
                 {/* Right action rail */}
                 <div className="absolute right-3 bottom-44 flex flex-col items-center gap-4 z-10">
                   <button
-                    onClick={() => setMuted((m) => !m)}
+                    onClick={toggleSound}
                     className="w-11 h-11 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
                     aria-label={muted ? 'Unmute' : 'Mute'}
                   >
@@ -277,6 +276,14 @@ export default function ReelsFeed() {
           );
         })}
       </div>
+
+      {needsTap && (
+        <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
+          <span className="rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
+            সাউন্ড চালু করতে ট্যাপ করুন
+          </span>
+        </div>
+      )}
 
       {toast && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/80 text-white text-sm z-20">

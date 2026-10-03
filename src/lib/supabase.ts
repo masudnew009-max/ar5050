@@ -10,6 +10,22 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /**
+ * Public shop names for a set of seller ids -> { [sellerId]: shopName }.
+ * Goes through the public_shop_names() database function (migration 020):
+ * seller_profiles itself is private (it holds NID numbers, phone, address).
+ */
+export async function fetchShopNames(sellerIds: string[]): Promise<Record<string, string>> {
+  const ids = [...new Set(sellerIds)];
+  if (ids.length === 0) return {};
+  const { data } = await supabase.rpc('public_shop_names', { p_ids: ids });
+  const map: Record<string, string> = {};
+  ((data as { id: string; shop_name: string }[] | null) ?? []).forEach((s) => {
+    map[s.id] = s.shop_name;
+  });
+  return map;
+}
+
+/**
  * Base types for the Multi-Vendor Platform.
  * More fields/types (Product, Order, Reel, Settings, etc.) will be added
  * as the corresponding database-schema phases (Phase 1-3) are completed.
