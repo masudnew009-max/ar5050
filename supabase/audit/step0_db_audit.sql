@@ -48,3 +48,20 @@ WHERE schemaname = 'public'
 
 -- 8) Admin accounts. Expected: only people you know.
 SELECT email, role, is_active FROM profiles WHERE role = 'admin';
+
+-- 9) Reel video sizes (14চ-৪). Heavy videos are one of the main reasons reels load slowly.
+--    Read the numbers, then decide the upload size limit for Phase 1 (Create page).
+SELECT count(*) AS videos,
+       round(avg((metadata->>'size')::numeric) / 1048576, 1) AS avg_mb,
+       round(max((metadata->>'size')::numeric) / 1048576, 1) AS max_mb,
+       count(*) FILTER (WHERE (metadata->>'size')::numeric > 10 * 1048576) AS over_10_mb,
+       count(*) FILTER (WHERE (metadata->>'size')::numeric > 25 * 1048576) AS over_25_mb
+FROM storage.objects
+WHERE bucket_id = 'reel-videos' AND name !~* '\.(jpe?g|png|webp)$';
+
+-- 9b) The 10 heaviest reel videos
+SELECT name, round((metadata->>'size')::numeric / 1048576, 1) AS mb, metadata->>'mimetype' AS type
+FROM storage.objects
+WHERE bucket_id = 'reel-videos' AND name !~* '\.(jpe?g|png|webp)$'
+ORDER BY (metadata->>'size')::numeric DESC NULLS LAST
+LIMIT 10;

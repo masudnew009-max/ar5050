@@ -4,6 +4,10 @@ import { Loader2, Volume2, VolumeX, Share2, ShoppingBag, Package, Film, Play } f
 import { supabase, fetchShopNames, ReelWithProduct } from '../../lib/supabase';
 import { formatPrice } from '../../lib/format';
 import { useReelSound } from '../../hooks/useReelSound';
+import { useActiveSlide } from '../../hooks/useActiveSlide';
+import {
+  PLAY_DELAY_MS, STALL_AFTER_MS, isSlowConnection, loadModeFor, preloadFor, unloadVideo,
+} from '../../lib/reelPlayback';
 
 export default function ReelsFeed() {
   const navigate = useNavigate();
@@ -15,12 +19,26 @@ export default function ReelsFeed() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [active, setActive] = useState(0);
   const { muted, needsTap, toggle: toggleSound, onPlayBlocked } = useReelSound();
   const [manualPaused, setManualPaused] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  // The scroll container exists only after loading; keep it in state so the slide observer
+  // attaches when it appears (see useActiveSlide).
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const setContainerRef = useCallback((el: HTMLDivElement | null) => {
+    containerRef.current = el;
+    setContainer(el);
+  }, []);
+  const [stalled, setStalled] = useState(false);
+  const stallTimer = useRef<number | null>(null);
+  const [active, setActive] = useActiveSlide(container, reels.length, () => {
+    setManualPaused(null);
+    setStalled(false);
+  });
+  const slow = isSlowConnection();
+  const hadSource = useRef<Record<number, boolean>>({});
   const videoRefs = useRef<Record<number, HTMLVideoElement | null>>({});
   const didScrollToStart = useRef(false);
 
@@ -57,51 +75,67 @@ export default function ReelsFeed() {
       containerRef.current.scrollTo({ top: idx * containerRef.current.clientHeight });
       setActive(idx);
     }
-  }, [loading, reels, startId]);
+  }, [loading, reels, startId, setActive]);
 
-  // ---- Track which reel is on screen ----
+  // ---- Play only the active video; release the data of videos that are no longer near ----
   useEffect(() => {
-    const root = containerRef.current;
-    if (!root || reels.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const idx = Number((entry.target as HTMLElement).dataset.index);
-            setActive(idx);
-            setManualPaused(null);
-          }
-        });
-      },
-      { root, threshold: 0.6 }
-    );
-
-    root.querySelectorAll('[data-index]').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [reels]);
-
-  // ---- Play only the active video ----
-  useEffect(() => {
+    const timers: number[] = [];
     Object.entries(videoRefs.current).forEach(([key, video]) => {
       if (!video) return;
       const idx = Number(key);
       video.muted = muted;
+
+      if (loadModeFor(idx - active, stalled, slow) === 'off') {
+        if (hadSource.current[idx]) {
+          unloadVideo(video);
+          hadSource.current[idx] = false;
+        }
+      } else {
+        hadSource.current[idx] = true;
+      }
+
       if (idx === active && manualPaused !== active) {
-        video.play().catch((err: unknown) => {
-          // Browser refused sound: play muted and show the "tap for sound" hint again
-          if (!muted && err instanceof DOMException && err.name === 'NotAllowedError') {
-            video.muted = true;
-            video.play().catch(() => {});
-            onPlayBlocked();
-          }
-        });
+        if (!video.paused) return;
+        // Short delay: a reel flung past during a fast swipe is no longer active by
+        // then (cleanup below), so it never plays and never makes a sound.
+        timers.push(
+          window.setTimeout(() => {
+            video.play().catch((err: unknown) => {
+              // Browser refused sound: play muted and show the "tap for sound" hint again
+              if (!muted && err instanceof DOMException && err.name === 'NotAllowedError') {
+                video.muted = true;
+                video.play().catch(() => {});
+                onPlayBlocked();
+              }
+            });
+          }, PLAY_DELAY_MS)
+        );
       } else {
         video.pause();
-        if (idx !== active) video.currentTime = 0;
+        if (idx !== active && hadSource.current[idx]) video.currentTime = 0;
       }
     });
-  }, [active, muted, manualPaused, reels, onPlayBlocked]);
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [active, muted, manualPaused, reels, loading, stalled, slow, onPlayBlocked]);
+
+  // The video on screen is stuck buffering -> neighbours stop downloading
+  const handleWaiting = (idx: number) => {
+    if (idx !== active || stallTimer.current !== null) return;
+    stallTimer.current = window.setTimeout(() => setStalled(true), STALL_AFTER_MS);
+  };
+  const handleRecovered = (idx: number) => {
+    if (stallTimer.current !== null) {
+      window.clearTimeout(stallTimer.current);
+      stallTimer.current = null;
+    }
+    if (idx === active) setStalled(false);
+  };
+  useEffect(
+    () => () => {
+      if (stallTimer.current !== null) window.clearTimeout(stallTimer.current);
+    },
+    []
+  );
 
   // ---- Keyboard navigation (desktop) ----
   const scrollByReel = useCallback((dir: 1 | -1) => {
@@ -184,13 +218,13 @@ export default function ReelsFeed() {
   return (
     <div className="relative h-[calc(100dvh-var(--header-h)-var(--bottom-nav-h))] bg-black">
       <div
-        ref={containerRef}
+        ref={setContainerRef}
         className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"
       >
         {reels.map((reel, i) => {
           const product = reel.product!;
           const soldOut = product.stock <= 0;
-          const near = Math.abs(i - active) <= 1;
+          const mode = loadModeFor(i - active, stalled, slow);
 
           return (
             <section
@@ -203,13 +237,16 @@ export default function ReelsFeed() {
                   ref={(el) => {
                     videoRefs.current[i] = el;
                   }}
-                  src={near ? reel.video_url : undefined}
+                  src={mode === 'off' ? undefined : reel.video_url}
                   poster={reel.thumbnail_url ?? undefined}
                   loop
                   muted={muted}
                   playsInline
-                  preload={near ? 'auto' : 'none'}
+                  preload={preloadFor(mode)}
                   onClick={() => togglePlay(i)}
+                  onWaiting={() => handleWaiting(i)}
+                  onPlaying={() => handleRecovered(i)}
+                  onCanPlay={() => handleRecovered(i)}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
 

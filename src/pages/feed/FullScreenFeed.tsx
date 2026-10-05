@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Film, Loader2, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { supabase, fetchShopNames, Product, ReelWithProduct } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useReelSound } from '../../hooks/useReelSound';
+import { useActiveSlide } from '../../hooks/useActiveSlide';
+import { isSlowConnection, loadModeFor } from '../../lib/reelPlayback';
 import { AuthModal } from '../../components/AuthModal';
 import ReelSlide from '../../components/feed/ReelSlide';
 import ProductSlide from '../../components/feed/ProductSlide';
@@ -32,7 +34,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [active, setActive] = useState(0);
+  const [stalled, setStalled] = useState(false);
   const { muted, needsTap, toggle: toggleSound, onPlayBlocked } = useReelSound();
 
   // Likes (14খ)
@@ -44,7 +46,16 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
 
   const items = useMemo(() => buildFeed(reels, plainProducts), [reels, plainProducts]);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  // The scroll container exists only after loading; keep it in state so the slide observer
+  // attaches when it appears (see useActiveSlide).
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const setContainerRef = useCallback((el: HTMLDivElement | null) => {
+    containerRef.current = el;
+    setContainer(el);
+  }, []);
+  const [active] = useActiveSlide(container, items.length, () => setStalled(false));
+  const slow = isSlowConnection();
 
   // ---- Load reels (RLS only returns active reels of approved, active products) ----
   useEffect(() => {
@@ -133,26 +144,6 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
     if (err) apply(wasLiked); // roll back
     pendingLikes.current.delete(reelId);
   };
-
-  // ---- Track which slide is centered ----
-  useEffect(() => {
-    const root = containerRef.current;
-    if (!root || items.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActive(Number((entry.target as HTMLElement).dataset.index));
-          }
-        });
-      },
-      { root, threshold: 0.6 }
-    );
-
-    root.querySelectorAll('[data-index]').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [items]);
 
   // ---- Arrow-key navigation (desktop) ----
   useEffect(() => {
@@ -253,7 +244,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
         </div>
       ) : (
         <div
-          ref={containerRef}
+          ref={setContainerRef}
           className="no-scrollbar h-full snap-y snap-mandatory overflow-y-scroll overscroll-contain"
         >
           {items.map((item, i) => (
@@ -263,7 +254,8 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
                   reel={item.reel}
                   shopName={shops[item.reel.seller_id]}
                   isActive={i === active}
-                  isNear={Math.abs(i - active) <= 1}
+                  loadMode={loadModeFor(i - active, stalled, slow)}
+                  onStalled={setStalled}
                   muted={muted}
                   soundLocked={needsTap}
                   onPlayBlocked={onPlayBlocked}

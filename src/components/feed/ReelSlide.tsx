@@ -3,14 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, Package, Play, ShoppingBag } from 'lucide-react';
 import type { ReelWithProduct } from '../../lib/supabase';
 import { formatCount, formatPrice } from '../../lib/format';
+import { LoadMode, PLAY_DELAY_MS, STALL_AFTER_MS, preloadFor, unloadVideo } from '../../lib/reelPlayback';
 
 interface ReelSlideProps {
   reel: ReelWithProduct;
   shopName?: string;
   /** This slide is the one currently centered on screen. */
   isActive: boolean;
-  /** Active slide or its direct neighbour — only these load video data. */
-  isNear: boolean;
+  /** How much of the video to download (see lib/reelPlayback.ts). */
+  loadMode: LoadMode;
+  /** The slide on screen is stuck buffering (true) / playing again (false). */
+  onStalled: (stalled: boolean) => void;
   muted: boolean;
   /** Sound is off only because the browser hasn't had a tap yet — the first tap should just enable sound. */
   soundLocked: boolean;
@@ -23,9 +26,10 @@ interface ReelSlideProps {
 
 /**
  * One full-screen reel: video, seller/caption, and a Buy Now bar.
- * Plays only while active, pauses (and rewinds) when scrolled away.
+ * Plays only while active, pauses (and rewinds) when scrolled away, and releases its
+ * video data when it is no longer next to the slide on screen.
  */
-export default function ReelSlide({ reel, shopName, isActive, isNear, muted, soundLocked, onPlayBlocked, liked, likeCount, onToggleLike }: ReelSlideProps) {
+export default function ReelSlide({ reel, shopName, isActive, loadMode, onStalled, muted, soundLocked, onPlayBlocked, liked, likeCount, onToggleLike }: ReelSlideProps) {
   const navigate = useNavigate();
   const product = reel.product!;
   const soldOut = product.stock <= 0;
@@ -39,6 +43,20 @@ export default function ReelSlide({ reel, shopName, isActive, isNear, muted, sou
     if (!isActive) setUserPaused(false);
   }, [isActive]);
 
+  // Release the data of slides that are no longer near the one on screen
+  const hadSource = useRef(false);
+  useEffect(() => {
+    if (loadMode !== 'off') {
+      hadSource.current = true;
+      return;
+    }
+    const video = videoRef.current;
+    if (video && hadSource.current) {
+      unloadVideo(video);
+      hadSource.current = false;
+    }
+  }, [loadMode]);
+
   // Auto play / pause
   useEffect(() => {
     const video = videoRef.current;
@@ -46,23 +64,53 @@ export default function ReelSlide({ reel, shopName, isActive, isNear, muted, sou
     video.muted = muted;
 
     if (isActive && !userPaused) {
-      video.play().catch((err: unknown) => {
-        // Sound was refused by the browser: fall back to muted playback and
-        // let the feed show the "tap for sound" hint again.
-        if (!muted && err instanceof DOMException && err.name === 'NotAllowedError') {
-          video.muted = true;
-          video.play().catch(() => {});
-          onPlayBlocked();
-        }
-      });
-    } else {
-      video.pause();
-      if (!isActive) {
-        video.currentTime = 0;
-        setProgress(0);
-      }
+      if (!video.paused) return;
+      // Short delay: a slide flung past during a fast swipe is no longer active
+      // by then (cleanup below), so it never plays and never makes a sound.
+      const timer = window.setTimeout(() => {
+        video.play().catch((err: unknown) => {
+          // Sound was refused by the browser: fall back to muted playback and
+          // let the feed show the "tap for sound" hint again.
+          if (!muted && err instanceof DOMException && err.name === 'NotAllowedError') {
+            video.muted = true;
+            video.play().catch(() => {});
+            onPlayBlocked();
+          }
+        });
+      }, PLAY_DELAY_MS);
+      return () => window.clearTimeout(timer);
     }
-  }, [isActive, userPaused, muted, isNear, onPlayBlocked]);
+
+    video.pause();
+    if (!isActive) {
+      if (hadSource.current) video.currentTime = 0;
+      setProgress(0);
+    }
+  }, [isActive, userPaused, muted, onPlayBlocked]);
+
+  // Tell the feed when the video on screen is stuck buffering, so neighbours stop competing
+  const stallTimer = useRef<number | null>(null);
+  const clearStall = () => {
+    if (stallTimer.current !== null) {
+      window.clearTimeout(stallTimer.current);
+      stallTimer.current = null;
+    }
+  };
+  useEffect(() => {
+    if (!isActive) {
+      clearStall();
+      return;
+    }
+    return clearStall;
+  }, [isActive]);
+  const handleWaiting = () => {
+    if (!isActive || stallTimer.current !== null) return;
+    stallTimer.current = window.setTimeout(() => onStalled(true), STALL_AFTER_MS);
+  };
+  const handleRecovered = () => {
+    clearStall();
+    if (isActive) onStalled(false);
+  };
 
   // Pause when the browser tab is hidden
   useEffect(() => {
@@ -96,13 +144,16 @@ export default function ReelSlide({ reel, shopName, isActive, isNear, muted, sou
       <div className="relative h-full w-full max-w-md overflow-hidden bg-dark-900">
         <video
           ref={videoRef}
-          src={isNear ? reel.video_url : undefined}
+          src={loadMode === 'off' ? undefined : reel.video_url}
           poster={reel.thumbnail_url ?? undefined}
           loop
           muted={muted}
           playsInline
-          preload={isNear ? 'auto' : 'none'}
+          preload={preloadFor(loadMode)}
           onClick={togglePlay}
+          onWaiting={handleWaiting}
+          onPlaying={handleRecovered}
+          onCanPlay={handleRecovered}
           onTimeUpdate={(e) => {
             const v = e.currentTarget;
             if (isActive && v.duration) setProgress(v.currentTime / v.duration);

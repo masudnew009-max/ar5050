@@ -14,6 +14,10 @@ Stack: React + Vite + Tailwind CSS + Supabase (hosted on Vercel)
 - **Info pages:** Contact, Shop FAQ, Terms & Conditions.
 - **Reel sound:** reels start muted (browser rule) and switch to sound automatically after the first tap;
   a deliberate mute is remembered on the device.
+- **Reel player:** one video plays at a time (a short delay stops reels flung past during a fast swipe from
+  making sound); only the reel on screen and the next one preload, the previous one loads metadata only and
+  the rest release their video data; on a slow connection, or while the reel on screen is buffering,
+  neighbours stop downloading. Shared by the home feed and `/reels` (`useActiveSlide`, `lib/reelPlayback.ts`).
 - **Audit log:** `audit_logs` (append-only, admin-read only) records payment-status changes and seller payouts.
 
 ## Supabase migrations
