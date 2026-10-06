@@ -41,11 +41,18 @@ export function useReelSound() {
   const [unlocked, setUnlocked] = useState(false);
 
   // The first real interaction anywhere on the page unlocks sound.
+  // A press on the sound button itself is left to toggle(): if this listener unlocked
+  // sound on pointerup, the click that follows would see "sound is on" and mute it
+  // again, so the very first tap on that button would turn sound on and straight off.
   useEffect(() => {
     if (unlocked) return;
-    const unlock = () => setUnlocked(true);
+    const unlock = (e: Event) => {
+      const target = e.target;
+      if (target instanceof Element && target.closest('[data-sound-toggle]')) return;
+      setUnlocked(true);
+    };
     const events: (keyof WindowEventMap)[] = ['pointerup', 'touchend', 'click', 'keydown'];
-    events.forEach((e) => window.addEventListener(e, unlock, { passive: true, once: true }));
+    events.forEach((e) => window.addEventListener(e, unlock, { passive: true }));
     return () => events.forEach((e) => window.removeEventListener(e, unlock));
   }, [unlocked]);
 
