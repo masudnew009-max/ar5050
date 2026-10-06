@@ -58,7 +58,11 @@ export default function ReelsFeed() {
         return;
       }
 
-      const list = ((data as ReelWithProduct[]) ?? []).filter((r) => r.product);
+      // Admins/sellers can also read reels of non-approved products, so re-check visibility
+      // here (same rule as the home feed).
+      const list = ((data as ReelWithProduct[]) ?? []).filter(
+        (r) => r.product && r.product.status === 'approved' && r.product.is_active
+      );
       setReels(list);
 
       setShops(await fetchShopNames(list.map((r) => r.seller_id)));
@@ -260,6 +264,7 @@ export default function ReelsFeed() {
                 <div className="absolute right-3 bottom-44 flex flex-col items-center gap-4 z-10">
                   <button
                     onClick={toggleSound}
+                    data-sound-toggle
                     className="w-11 h-11 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
                     aria-label={muted ? 'Unmute' : 'Mute'}
                   >

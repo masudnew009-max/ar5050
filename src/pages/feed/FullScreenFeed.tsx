@@ -212,6 +212,7 @@ export default function FullScreenFeed({ variant = 'standalone' }: FullScreenFee
           {items.length > 0 && (
             <button
               onClick={toggleSound}
+              data-sound-toggle
               className="pointer-events-auto ml-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur"
               aria-label={muted ? 'Unmute' : 'Mute'}
             >
